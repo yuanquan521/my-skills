@@ -1,0 +1,50 @@
+{
+  "skill_name": "fastapi-backend-structure",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "在一个空目录里创建一个 FastAPI 后端项目，使用 PostgreSQL，包含 health 和 users 两个模块。要用 uv 做 Python 版本和依赖管理，要用工厂模式，不同环境用不同 .env 配置，路由要统一管理，不要用 @router.get 这种装饰器。返回值、异常和日志也要统一处理，还要有健康检查、测试规范和基础安全配置。",
+      "expected_output": "生成固定 app/ 目录结构、.python-version、pyproject.toml、uv.lock、app/factory.py create_app、app/main.py 仅暴露 ASGI app、.env/.env.example 配置入口、PostgreSQL/SQLAlchemy/Alembic 配置、明确事务边界、RouteSpec 或 add_api_route 集中注册路由、统一 ApiResponse 返回 envelope、全局异常处理注册、统一 logging/request_id 模块、health/ready 端点、pytest 测试骨架、CORS/trusted hosts/secrets 安全基线，并避免所有 FastAPI 路由装饰器。",
+      "files": [],
+      "expectations": [
+        "The project includes .python-version, pyproject.toml, and uv.lock, and documented commands use uv run.",
+        "app/main.py only exposes app = create_app() and application assembly lives in app/factory.py.",
+        "Database engine and sessionmaker are created from Settings inside lifespan, not at module import time.",
+        "Routes are registered through RouteSpec/add_api_route and no @router.* or @app.* route decorators are added.",
+        "Success and error responses share ApiResponse, with ok(...) and error(...) helpers.",
+        "Health and readiness endpoints are separate: /health does not require PostgreSQL and /ready checks PostgreSQL.",
+        "Tests cover request ID propagation and include a static check forbidding FastAPI route decorators."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "给现有 FastAPI 项目加一个 orders 模块，要求有 schema、model、repository、service、endpoint，数据库是 PostgreSQL。项目要使用 uv 管理依赖和运行命令，要保持 create_app 工厂模式，配置统一从 .env 读取，日志也要走统一模块。请保持统一路由注册，不要在模块里写装饰器，并且成功/失败响应格式都一致。新增写入逻辑要有事务边界和测试。",
+      "expected_output": "新增 orders 模块并在中央 router 中注册 routes 列表；保留或补齐 uv 管理文件、create_app 工厂入口、集中 Settings 配置和统一 logging/get_logger；数据层使用 PostgreSQL ORM 模型和 repository；写入逻辑有明确事务边界；endpoint 返回统一 ApiResponse；业务错误走 AppError/全局 exception handler；补充服务/路由/响应测试；没有新增 @router.* 或 @app.* 路由装饰器。",
+      "files": [],
+      "expectations": [
+        "The orders module includes schemas.py, models.py, repository.py, service.py, endpoints.py, and routes.py.",
+        "orders/routes.py exposes RouteSpec entries and the central API router registers the orders routes.",
+        "Order writes use an explicit service-owned transaction boundary; the repository does not call commit().",
+        "Order endpoints return ApiResponse[...] through ok(...) and raise AppError for business failures.",
+        "The new Order model is discoverable by Alembic and a migration is created or explicitly called out.",
+        "Tests cover route registration, response envelope shape, and create-order transaction behavior.",
+        "No @router.* or @app.* route decorators are introduced."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "这个项目的 FastAPI 路由散落在很多 @router.post/@router.get 装饰器里，启动入口也直接写在 main.py，而且异常返回和日志格式都不统一，依赖还是 requirements.txt 手动维护，健康检查也会连数据库导致部署误判。帮我重构成 uv 版本管理、工厂模式、统一 .env 配置、统一路由管理、统一回复处理、统一异常处理、统一日志模块，同时保留 PostgreSQL 和 Alembic。",
+      "expected_output": "识别并迁移装饰器路由为集中 RouteSpec/add_api_route 注册；补齐 pyproject.toml、uv.lock、.python-version 并让 uv 成为依赖和命令入口；把应用创建迁移到 create_app 工厂并让 main.py 只暴露 app；配置统一进入 Settings/.env；保留现有 PostgreSQL/Alembic 配置并明确事务边界；最终路由入口从中央 api/router.py 可见；成功响应和错误响应都走统一 envelope；异常处理通过 app.add_exception_handler 集中注册；日志通过 app/core/logging.py 和请求 ID 中间件统一；拆分 health 与 ready 行为并补充测试。",
+      "files": [],
+      "expectations": [
+        "Existing route decorators are migrated to centralized RouteSpec/add_api_route registration.",
+        "main.py is reduced to the ASGI entrypoint and create_app owns application assembly.",
+        "Dependency management moves to uv with pyproject.toml, uv.lock, and .python-version.",
+        "Configuration access is centralized in Settings and .env files; scattered os.getenv calls are removed or justified.",
+        "Error responses are produced through the shared error(...) helper rather than hand-written JSON.",
+        "Request ID middleware is pure ASGI and writes request_id into response headers and the response envelope.",
+        "/health no longer checks the database; /ready performs the PostgreSQL readiness check."
+      ]
+    }
+  ]
+}
