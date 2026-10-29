@@ -45,6 +45,8 @@ Use a maintained password-hashing library. Two reasonable choices:
 
 Pick one per project. Wrapping the choice keeps callers stable if you swap libraries later.
 
+The full JWT/OAuth2 recipe — token issuance, `get_current_user`/`CurrentUser`, route protection, and auth tests — lives in `authentication.md`; this file stays the baseline.
+
 ```python
 from pwdlib import PasswordHash
 

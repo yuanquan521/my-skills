@@ -1,6 +1,6 @@
 # Testing Reference
 
-Use this reference when adding tests for the app factory, configuration, route registry, response envelope, exception handling, request IDs, health checks, repositories, or services.
+Use this reference when adding tests for the app factory, configuration loading, route registry, response envelope, exception handling, request IDs, health checks, services, or data access.
 
 ## Rules
 
@@ -58,7 +58,7 @@ The default `database_url` works locally but must be overridable from CI — rea
 
 ## Dependency Overrides
 
-The most common test pattern: override `get_db` to inject a test session, mock, or repository fake. `app.dependency_overrides` is keyed by the dependency function, not its `Depends(...)` wrapper.
+The most common test pattern: override `get_db` to inject a test session or mock. `app.dependency_overrides` is keyed by the dependency function, not by its `Depends(...)` wrapper.
 
 ```python
 import pytest
@@ -132,9 +132,9 @@ This is also worth running as a CI lint step so the rule is enforced even when f
 
 ## Database Test Notes
 
-- Prefer a real PostgreSQL test database for repository tests; SQLite often hides type/cast/constraint differences.
+- Prefer a real PostgreSQL test database for data-access tests; SQLite often hides type/cast/constraint differences.
 - Use transactions or schema cleanup to isolate tests.
-- Service tests may use repository fakes when the behavior under test is business logic rather than SQL.
+- Service tests may use faked sessions when the behavior under test is business logic rather than SQL.
 
 ## Coverage Targets
 
@@ -143,4 +143,4 @@ This is also worth running as a CI lint step so the rule is enforced even when f
 - Route registry exposes expected paths.
 - Success and error responses follow the envelope.
 - Request IDs are propagated to both the response header and the body.
-- Repositories and services cover the changed behavior, including rollback paths.
+- Services and data-access paths cover the changed behavior, including rollback paths.

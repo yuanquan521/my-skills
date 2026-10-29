@@ -32,13 +32,15 @@ Read only the reference files needed for the immediate task:
 - For PostgreSQL, SQLAlchemy, sessions, transactions, and Alembic structure, read `references/database.md`.
 - For Alembic async configuration, migration commands, and migration naming rules, read `references/alembic.md`.
 - For centralized route registration without decorators, read `references/routing.md`.
-- For creating a new domain module with schemas, model, repository, service, endpoints, and routes, read `references/module-template.md`.
+- For creating a new domain — single-file or package, with schemas, models, endpoints, routes, and growth tiers — read `references/module-template.md`.
 - For unified response envelope, error helper, and pagination, read `references/responses.md`.
 - For application errors and global exception handling, read `references/exceptions.md`.
 - For centralized logging, request IDs, and ASGI middleware, read `references/logging.md`.
 - For health and readiness endpoints, read `references/health.md`.
 - For pytest, app factory tests, dependency overrides, and route checks, read `references/testing.md`.
 - For CORS, trusted hosts, secrets, password handling, and logging redaction, read `references/security.md`.
+- For JWT/OAuth2 authentication, token issuance, password hashing modules, and `CurrentUser` route protection, read `references/authentication.md`.
+- For SSE, JSON Lines, byte streams, and `RouteSpec.response_class`, read `references/streaming.md`.
 
 When scaffolding a brand-new backend, read all reference files once, then implement the smallest complete skeleton that satisfies the user request. When adding one module to an existing backend, read only the references that touch the changed area plus any local project files needed to preserve existing conventions.
 
@@ -59,25 +61,26 @@ For new projects, converge on this layout:
 - `app/factory.py`
 - `app/api/router.py`
 - `app/api/route_registry.py`
+- `app/api/dependencies.py`
 - `app/core/config.py`
 - `app/core/exceptions.py`
 - `app/core/exception_handlers.py`
 - `app/core/errors.py`
+- `app/core/security.py` (password hashing and JWT helpers; no FastAPI imports — present when authentication is)
 - `app/core/logging.py`
 - `app/core/responses.py`
 - `app/db/base.py`
 - `app/db/session.py`
 - `app/db/migrations.py`
 - `app/middleware/request_context.py`
-- `app/modules/health/endpoints.py`
-- `app/modules/health/routes.py`
-- `app/modules/health/schemas.py`
-- `app/modules/<domain>/endpoints.py`
-- `app/modules/<domain>/routes.py`
-- `app/modules/<domain>/schemas.py`
-- `app/modules/<domain>/models.py`
-- `app/modules/<domain>/repository.py`
-- `app/modules/<domain>/service.py`
+- `app/api/v1/health.py`
+- `app/api/v1/<domain>.py` (single-file domain — the default starting form)
+- `app/api/v1/<domain>/endpoints.py` (package form, after growth triggers)
+- `app/api/v1/<domain>/routes.py`
+- `app/api/v1/<domain>/schemas.py`
+- `app/api/v1/<domain>/service.py` (complex domains only)
+- `app/models/__init__.py` (re-exports every ORM model; imported once by `app/db/base.py`)
+- `app/models/<domain>.py` (SQLAlchemy ORM models, one file per domain)
 - `.env.example`
 - `.python-version`
 - `pyproject.toml`
@@ -107,7 +110,7 @@ Use Alembic for every schema change. Do not create or mutate tables from applica
 
 Use explicit route registration through a central registry. Do not add FastAPI route decorators in endpoint modules or app startup files.
 
-Use one response envelope across the API for both success and error paths. Error envelopes go through the shared `error(...)` helper so they cannot drift from `ApiResponse`.
+Use one response envelope across the API for both success and error paths. Error envelopes go through the shared `error(...)` helper so they cannot drift from `ApiResponse`. Streaming routes (`RouteSpec.response_class`) are the sole exception; see `references/streaming.md`.
 
 Use typed application exceptions and globally registered exception handlers. Services may raise application errors; repositories should not import FastAPI.
 
@@ -121,12 +124,14 @@ Keep the security baseline centralized: secrets in environment configuration, CO
 
 Use these boundaries consistently:
 
-- `endpoints.py`: FastAPI-facing functions, dependency parameters, request/response schemas
+- Domains live under `app/api/v1/` — start as `<domain>.py` single files and promote to `<domain>/` packages on growth triggers (see `references/module-template.md`)
+- `routes` list of `RouteSpec` entries: route metadata only, the sole way endpoints get declared
+- `endpoints.py`: FastAPI-facing functions, dependency parameters (package form)
 - `schemas.py`: Pydantic request and response models
-- `models.py`: SQLAlchemy ORM models
-- `repository.py`: database queries and persistence methods
-- `service.py`: business rules and orchestration
-- `routes.py`: route metadata only
+- `app/models/<domain>.py`: SQLAlchemy ORM models — centralized in the shared models folder, one file per domain, re-exported from `app/models/__init__.py`
+- `app/api/dependencies.py`: shared `Annotated` dependency aliases (`DbSession`, `RequestId`, future auth deps); endpoint files import dependencies only from here
+- `service.py`: business rules, orchestration, and transaction ownership — added only when a domain has reusable logic
+- `repository.py`: not part of the contract; only by explicit project choice, and then no `commit()` and no FastAPI imports
 - `app/core/responses.py`: shared `ApiResponse`, `ok(...)`, `error(...)` helpers
 - `app/core/exceptions.py`: shared application exceptions
 - `app/core/exception_handlers.py`: exception-to-response handlers (use `error(...)` from responses)
@@ -138,17 +143,17 @@ Endpoint functions should stay thin. They should handle HTTP-level dependency wi
 ## Implementation Workflow
 
 1. Inspect the existing project before editing. Record any decisions already made (async/sync, transaction owner, paging shape) and preserve compatible local patterns while enforcing the core rules above.
-2. If scaffolding a new backend, create the fixed structure first, then add uv project metadata, the app factory with lifespan, settings, database (engine constructed inside lifespan), route registry, unified responses (`ok` + `error`), exception handlers, logging with ASGI request-context middleware, the health module, and requested domain modules.
+2. If scaffolding a new backend, create the fixed structure first, then add uv project metadata, the app factory with lifespan, settings, database (engine constructed inside lifespan), route registry, unified responses (`ok` + `error`), exception handlers, logging with ASGI request-context middleware, the health module (`app/api/v1/health.py`), and requested domains under `app/api/v1/`, starting single-file.
 3. If refactoring an existing backend, migrate one concern at a time: factory/config, routes, responses (success + error), exceptions, logging, then domain modules.
 4. Configure PostgreSQL through centralized settings loaded from `.env`.
-5. Choose and document the database transaction boundary before adding repositories or services.
+5. Choose and document the database transaction boundary before adding services (or an explicitly chosen repository layer).
 6. Support environment overlays with consistent variable names, selected by the configured app environment.
 7. Manage dependencies and verification commands through uv.
 8. Register all routes through the central route registry. Use `RouteSpec.dependencies` instead of decorator-based `Depends`.
 9. Add Alembic configuration and a migration whenever models are introduced.
 10. Add health and readiness endpoints with the correct semantics (health independent of DB; ready checks DB).
 11. Apply the security baseline for configuration, logging, and middleware. Apply the CORS `allow_credentials` guard.
-12. Add focused tests for the app factory, configuration loading, route registration, response envelope, exception handling, request ID behavior, health/readiness checks, and touched service/repository behavior. Use `app.dependency_overrides` rather than env mutation.
+12. Add focused tests for the app factory, configuration loading, route registration, response envelope, exception handling, request ID behavior, health/readiness checks, and touched service behavior (when present). Use `app.dependency_overrides` rather than env mutation.
 13. Run the project test and lint commands through uv when available.
 
 ## Common Pitfalls
@@ -160,7 +165,10 @@ These keep slipping into FastAPI projects. Catch them in review before they ship
 - **Hand-rolled error JSON in exception handlers.** Drifts from `ApiResponse` over time. Always go through the `error(...)` helper.
 - **`print(...)` in feature modules.** Bypasses log levels and structured logging. Use `get_logger(__name__)`.
 - **`HTTPException` raised inside services.** Couples services to FastAPI and skips the unified envelope. Raise `AppError` and let the global handler format the response.
-- **`from fastapi import ...` inside `repository.py`.** Repositories should be importable from CLI scripts and migrations without dragging the web framework in.
+- **Blocking calls inside `async def` endpoints.** Freezes the event loop and tanks every concurrent request. Use `def` endpoints (run in a threadpool) for blocking libraries, or async libraries throughout.
+- **`...` ellipsis defaults and `RootModel`.** Required fields need no `...`; validated collections are `Annotated[list[T], Field(...)]` type annotations (FastAPI builds a `TypeAdapter`), not wrapper models. Official FastAPI skill convention.
+- **Select-then-insert uniqueness checks.** Race-prone (TOCTOU): two requests can both pass the pre-check. Enforce a unique DB index and translate `IntegrityError` into an `AppError`; keep pre-checks only for friendly early errors.
+- **Symmetry layers for thin CRUD domains.** Creating `service.py`/`repository.py` per domain regardless of logic thickness. Add layers for reuse or transaction orchestration, not symmetry.
 - **`app.dependency_overrides` not cleared after a test.** Leaks into the next test. Wrap overrides in a fixture's `try/finally`.
 - **`os.getenv(...)` outside `app/core/config.py`.** Bypasses the typed `Settings` model and makes overrides invisible.
 - **`Base.metadata.create_all(engine)` at startup in production code.** Skips Alembic's history. Run migrations explicitly.
@@ -195,7 +203,7 @@ Before finishing, verify:
 - Tests use `app.dependency_overrides` rather than env mutation.
 - CORS, trusted hosts (with `allow_credentials` guard), secrets, password handling, and log redaction follow the security baseline when relevant.
 - Endpoint functions are thin and do not contain raw SQL or heavy business logic.
-- Repository methods do not import FastAPI objects.
+- Domain granularity matches complexity: thin CRUD domains stay single-file, and no `repository.py` layers are built for symmetry.
 - Tests or runnable verification steps cover the changed route paths and shared infrastructure.
 
 ## Final Response

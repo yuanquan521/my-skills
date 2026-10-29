@@ -50,13 +50,17 @@ target-version = "py312"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.fastapi]
+entrypoint = "app.main:app"
 ```
 
 ## Common Commands
 
 ```bash
 uv sync
-uv run uvicorn app.main:app --reload
+uv run fastapi dev                     # dev server with reload; reads [tool.fastapi] entrypoint
+uv run uvicorn app.main:app --reload  # equivalent when avoiding the fastapi CLI
 uv run alembic upgrade head
 uv run pytest
 uv run ruff check .

@@ -117,4 +117,5 @@ configure_logging(app, is_scheduler=True)
 
 with app.app_context():
     # ... 继续实例化 APScheduler 及读取配置等
+    pass
 ```

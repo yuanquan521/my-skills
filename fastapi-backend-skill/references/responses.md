@@ -71,11 +71,10 @@ def error(
 ## Endpoint Pattern
 
 ```python
+from app.api.dependencies import DbSession, RequestId
+from app.api.v1.users.schemas import UserRead
+from app.api.v1.users.service import UserService
 from app.core.responses import ApiResponse, ok
-from app.db.session import DbSession
-from app.middleware.request_context import RequestId
-from app.modules.users.schemas import UserRead
-from app.modules.users.service import UserService
 
 
 async def list_users(
@@ -90,7 +89,7 @@ async def list_users(
 
 ## Pagination
 
-For list endpoints, prefer a typed `Page[T]` payload over ad hoc keys. This keeps clients from inventing their own paging shapes per resource.
+For list endpoints, prefer a typed `Page[T]` payload over ad hoc keys. This keeps clients from inventing their own paging shapes per resource. Every paginated query also needs a deterministic `.order_by(...)` — see the note below the example.
 
 ```python
 from typing import Generic, TypeVar
@@ -119,6 +118,8 @@ async def list_users(
         request_id=request_id,
     )
 ```
+
+Every offset/limit query must apply a deterministic `.order_by(...)` — typically the primary key or a unique timestamp. Without stable ordering, PostgreSQL may return rows in different orders across page fetches, and pagination silently skips or repeats rows.
 
 If a project needs cursor-based pagination instead, swap `Page` for a `CursorPage[T]` with `next_cursor` / `prev_cursor`. The envelope stays the same.
 

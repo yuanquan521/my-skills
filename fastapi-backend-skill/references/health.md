@@ -9,25 +9,22 @@ Use this reference when implementing health, readiness, dependency checks, or sm
 - `/ready` proves required dependencies such as PostgreSQL are reachable. Load balancers gate traffic on `/ready`, not `/health`.
 - Both endpoints use centralized route registration and the unified response envelope.
 
-## Health Schemas
+## Single-File Domain
+
+Health is a thin domain, so it stays a single module: `app/api/v1/health.py` holds schemas, endpoint functions, and the `routes` list.
 
 ```python
+# app/api/v1/health.py
 from pydantic import BaseModel
+from sqlalchemy import text
+
+from app.api.dependencies import DbSession, RequestId
+from app.api.route_registry import RouteSpec
+from app.core.responses import ApiResponse, ok
 
 
 class HealthStatus(BaseModel):
     status: str
-```
-
-## Health Endpoints
-
-```python
-from sqlalchemy import text
-
-from app.core.responses import ApiResponse, ok
-from app.db.session import DbSession
-from app.middleware.request_context import RequestId
-from app.modules.health.schemas import HealthStatus
 
 
 async def health(request_id: RequestId) -> ApiResponse[HealthStatus]:
@@ -37,21 +34,12 @@ async def health(request_id: RequestId) -> ApiResponse[HealthStatus]:
 async def ready(db: DbSession, request_id: RequestId) -> ApiResponse[HealthStatus]:
     await db.execute(text("select 1"))
     return ok(HealthStatus(status="ready"), request_id=request_id)
-```
-
-## Health Routes
-
-```python
-from app.api.route_registry import RouteSpec
-from app.core.responses import ApiResponse
-from app.modules.health import endpoints
-from app.modules.health.schemas import HealthStatus
 
 
 routes = [
     RouteSpec(
         path="/health",
-        endpoint=endpoints.health,
+        endpoint=health,
         methods=["GET"],
         response_model=ApiResponse[HealthStatus],
         name="health",
@@ -59,7 +47,7 @@ routes = [
     ),
     RouteSpec(
         path="/ready",
-        endpoint=endpoints.ready,
+        endpoint=ready,
         methods=["GET"],
         response_model=ApiResponse[HealthStatus],
         name="ready",

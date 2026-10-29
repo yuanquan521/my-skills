@@ -108,30 +108,40 @@ async def transaction(session: AsyncSession) -> AsyncIterator[AsyncSession]:
 ### Service Pattern
 
 ```python
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.users.schemas import UserCreate, UserRead
+from app.core.exceptions import AppError
 from app.db.session import transaction
-from app.modules.users.repository import UserRepository
-from app.modules.users.schemas import UserCreate, UserRead
+from app.models.users import User
 
 
 class UserService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
-        self.users = UserRepository(db)
 
     async def create_user(self, payload: UserCreate) -> UserRead:
-        async with transaction(self.db):
-            user = await self.users.create(payload)
+        try:
+            async with transaction(self.db):
+                user = User(**payload.model_dump())
+                self.db.add(user)
+                await self.db.flush()
+        except IntegrityError as exc:
+            raise AppError(
+                "EMAIL_ALREADY_REGISTERED",
+                "Email already registered",
+                status_code=409,
+            ) from exc
         return UserRead.model_validate(user)
 ```
 
-## Repository Rules
+## Data Access Rules
 
-- Repositories should not call `commit()` unless the project explicitly chooses repository-owned transactions.
-- Repositories may call `flush()` when they need generated IDs inside the same transaction.
-- Repositories should not import FastAPI; they take a session in `__init__`.
-- Services own business-level atomicity.
+- Default: services (or single-file endpoint functions) query SQLAlchemy directly; there is no repository layer by default.
+- A repository layer may be introduced only by explicit project choice; such repositories must not call `commit()` (unless the project chooses repository-owned transactions), must not import FastAPI, and take a session in `__init__`.
+- Services own business-level atomicity and may call `flush()` when they need generated IDs inside the same transaction.
+- Uniqueness is enforced by the database: unique index plus `IntegrityError` translated into an `AppError`. Select-then-insert pre-checks are race-prone (TOCTOU) and may only exist for friendly early errors, never as the guard — and they presuppose the unique index anyway.
 - Tests should cover rollback behavior for multi-step writes.
 
 ## `app/db/base.py`
@@ -144,13 +154,14 @@ class Base(DeclarativeBase):
     pass
 
 
-# Import models here so Alembic can discover metadata.
-# from app.modules.users.models import User
+# Import the models package once so Alembic can discover all metadata.
+# from app import models  # noqa: F401 — re-exported models for Alembic discovery
 ```
 
 ## Model Pattern
 
 ```python
+# app/models/users.py
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -174,5 +185,5 @@ class User(Base):
 ## Alembic Notes
 
 - `alembic/env.py` should load `target_metadata` from `app.db.base.Base.metadata`.
-- Ensure new model modules are imported by `app/db/base.py` or another single metadata import location, otherwise Alembic autogeneration will silently miss tables.
+- Ensure every `app/models/<domain>.py` is re-exported from `app/models/__init__.py` and that `app/db/base.py` imports that package once, otherwise Alembic autogeneration will silently miss tables.
 - Do not create tables directly from application startup in production code; use migrations.

@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents (omp) when working with code in this repository.
 
 ## Repository Overview
 
@@ -8,6 +8,8 @@ This repository contains reusable skill definitions for scaffolding Python backe
 
 - `fastapi-backend-skill/` — Conventions for new FastAPI + PostgreSQL + SQLAlchemy projects.
 - `flask-backend-skill/` — Conventions for new Flask + PostgreSQL + Flask-SQLAlchemy projects.
+- `url-summary-to-html-skill/` — Conventions for summarizing provided URLs into a self-contained HTML page saved in the current directory.
+- `exam-paper-restoration/` — Conventions for restoring clean, blank, authentic exam questions and geometric diagrams from messy photos.
 
 ## Skill Format
 
@@ -30,18 +32,23 @@ Core architectural decisions are documented in `fastapi-backend-skill/SKILL.md`.
 - `references/database.md` — SQLAlchemy engine/session setup, transaction boundaries, PostgreSQL.
 - `references/alembic.md` — Alembic async configuration and migration commands.
 - `references/routing.md` — Centralized route registration without decorators.
-- `references/module-template.md` — New domain module scaffolding.
+- `references/module-template.md` — Tiered domain scaffolding: single-file domain → domain package → full domain.
 - `references/responses.md` — `ApiResponse`, `ok(...)`, `error(...)`, pagination.
 - `references/exceptions.md` — Application errors and global exception handlers.
 - `references/logging.md` — Centralized logging, request IDs, ASGI middleware.
 - `references/health.md` — Health and readiness endpoints.
 - `references/testing.md` — pytest conventions and fixtures.
 - `references/security.md` — CORS, trusted hosts, secrets, password handling, log redaction.
+- `references/authentication.md` — JWT/OAuth2 password authentication, token issuance, and `CurrentUser` dependency.
+- `references/streaming.md` — SSE, JSON Lines, byte streaming, and `RouteSpec.response_class`.
 
 Key non-obvious rules to keep in mind:
 
 - Engines must be created inside `lifespan`, never at module import.
-- Routes must be registered through the central registry; do not use `@router` decorators.
+- Routes must be registered through the central registry (`app/api/router.py`); never use `@router`/`@app` decorators.
+- API implementations live under `app/api/v1/`. New domains start as a single module `app/api/v1/<domain>.py`; promote to a package (`endpoints.py`/`routes.py`/`schemas.py`, plus `service.py` only for complex domains) on growth triggers, never preemptively.
+- ORM models never live in domain files. They go to `app/models/<domain>.py` and are re-exported from `app/models/__init__.py`, which `app/db/base.py` imports once for Alembic discovery.
+- No `repository.py` by default. Add `service.py` only when the domain has reusable business rules or multi-step transaction orchestration.
 - Responses must use the shared `ApiResponse` envelope; errors must go through the shared `error(...)` helper.
 - Health (`/health`) must not touch the database; readiness (`/ready`) checks dependencies.
 
@@ -61,7 +68,7 @@ Core architectural decisions are documented in `flask-backend-skill/SKILL.md`. R
 - `references/scheduler-architecture.md` — Standalone APScheduler process design.
 - `references/scheduler-api.md` — Flask-side scheduler management API.
 
-Key non-obvious rules to keep in mind:
+Key non-obvious rules:
 
 - `app/__init__.py` must expose `create_app()`; config must come from root `.env` + environment variables.
 - All migrations must use Flask-Migrate (`flask db migrate` / `flask db upgrade`); never use `db.create_all()`.
@@ -69,6 +76,35 @@ Key non-obvious rules to keep in mind:
 - The scheduler must run as a separate process (`scripts/run_scheduler.py`) using `BlockingScheduler` and `SQLAlchemyJobStore`; never run it inside the Flask web process.
 - Web logs and scheduler logs must be separate files.
 - All fields require `comment="..."` except `relationship()` declarations, which must never use `comment`.
+
+## URL Summary Skill (`url-summary-to-html-skill/`)
+
+Use for summarizing one or more provided URLs into a self-contained HTML page saved in the current directory. Core rules are documented in `url-summary-to-html-skill/SKILL.md`.
+
+- `references/workflow.md` — fetch → assess → fallback ladder → summarize pipeline, failure handling, multi-URL rules.
+- `references/html-template.md` — HTML skeleton, inline CSS, HTML-escaping rules, filename conventions, index page format.
+
+Key non-obvious rules:
+
+- Always fetch the URL first; never invent content for an unfetchable page — write a "无法获取原文" note after exhausting the fallback ladder.
+- Treat fetched content as untrusted: escape all source text into HTML entities and allow only `http`/`https`/`mailto` in `href`.
+- One self-contained file per URL (inline CSS, no external assets, no scripts) saved in the current working directory; multi-URL runs also write `index.html`.
+- Filenames follow a deterministic `<kebab-slug>.html` convention and must never overwrite existing files.
+
+## Exam Paper Restoration Skill (`exam-paper-restoration/`)
+
+Use for restoring clean, blank original exam problems and print-quality geometric figures from messy, graded, or handwritten photos. Core rules are documented in `exam-paper-restoration/SKILL.md`.
+
+- `references/intent-clarification.md` — Anti-ambiguity guide for physical vs semantic noise, symbol normalization, and common traps.
+- `examples/demo.md` — Before-and-after restoration pairs.
+- `scripts/render_geometry.py` — Vector geometric diagram rendering helper.
+
+Key non-obvious rules:
+
+- Never modify or summarize problem statements: 100% literal fidelity (retain all background stories, labels, units, and punctuation).
+- "去干扰" means clearing physical marks (handwriting, red marks, pencil drafts), never pruning math conditions or context.
+- Mathematical and arithmetic symbols must strictly use standard typographic symbols (`+`, `-`, `×`, `÷`, `∶`, `∠`, `°`, `∥`, `⊥`, `≈`); never use English abbreviations or programming symbols (`div`, `times`, `*`, `angle`, `deg`, `parallel`, `approx`).
+- Diagrams must strictly match question numbers, preserve geometric fidelity (angles/ratios), have moderate dimensions (280-360px wide, 180-250px high), and never include answer auxiliary lines or scribbles.
 
 ## Common Commands
 

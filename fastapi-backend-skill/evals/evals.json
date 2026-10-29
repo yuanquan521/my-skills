@@ -4,13 +4,14 @@
     {
       "id": 1,
       "prompt": "在一个空目录里创建一个 FastAPI 后端项目，使用 PostgreSQL，包含 health 和 users 两个模块。要用 uv 做 Python 版本和依赖管理，要用工厂模式，不同环境用不同 .env 配置，路由要统一管理，不要用 @router.get 这种装饰器。返回值、异常和日志也要统一处理，还要有健康检查、测试规范和基础安全配置。",
-      "expected_output": "生成固定 app/ 目录结构、.python-version、pyproject.toml、uv.lock、app/factory.py create_app、app/main.py 仅暴露 ASGI app、.env/.env.example 配置入口、PostgreSQL/SQLAlchemy/Alembic 配置、明确事务边界、RouteSpec 或 add_api_route 集中注册路由、统一 ApiResponse 返回 envelope、全局异常处理注册、统一 logging/request_id 模块、health/ready 端点、pytest 测试骨架、CORS/trusted hosts/secrets 安全基线，并避免所有 FastAPI 路由装饰器。",
+      "expected_output": "生成固定 app/ 目录结构（API 实现放 app/api/v1/ 下，简单域单文件、复杂域域包）、.python-version、pyproject.toml、uv.lock、app/factory.py create_app、app/main.py 仅暴露 ASGI app、.env/.env.example 配置入口、PostgreSQL/SQLAlchemy/Alembic 配置、明确事务边界、RouteSpec 或 add_api_route 集中注册路由、统一 ApiResponse 返回 envelope、全局异常处理注册、统一 logging/request_id 模块、health/ready 端点、pytest 测试骨架、CORS/trusted hosts/secrets 安全基线，并避免所有 FastAPI 路由装饰器。",
       "files": [],
       "expectations": [
         "The project includes .python-version, pyproject.toml, and uv.lock, and documented commands use uv run.",
         "app/main.py only exposes app = create_app() and application assembly lives in app/factory.py.",
         "Database engine and sessionmaker are created from Settings inside lifespan, not at module import time.",
         "Routes are registered through RouteSpec/add_api_route and no @router.* or @app.* route decorators are added.",
+        "Simple domains start as single modules under app/api/v1/ (for example app/api/v1/health.py); packages appear only on growth triggers.",
         "Success and error responses share ApiResponse, with ok(...) and error(...) helpers.",
         "Health and readiness endpoints are separate: /health does not require PostgreSQL and /ready checks PostgreSQL.",
         "Tests cover request ID propagation and include a static check forbidding FastAPI route decorators."
@@ -19,10 +20,10 @@
     {
       "id": 2,
       "prompt": "给现有 FastAPI 项目加一个 orders 模块，要求有 schema、model、repository、service、endpoint，数据库是 PostgreSQL。项目要使用 uv 管理依赖和运行命令，要保持 create_app 工厂模式，配置统一从 .env 读取，日志也要走统一模块。请保持统一路由注册，不要在模块里写装饰器，并且成功/失败响应格式都一致。新增写入逻辑要有事务边界和测试。",
-      "expected_output": "新增 orders 模块并在中央 router 中注册 routes 列表；保留或补齐 uv 管理文件、create_app 工厂入口、集中 Settings 配置和统一 logging/get_logger；数据层使用 PostgreSQL ORM 模型和 repository；写入逻辑有明确事务边界；endpoint 返回统一 ApiResponse；业务错误走 AppError/全局 exception handler；补充服务/路由/响应测试；没有新增 @router.* 或 @app.* 路由装饰器。",
+      "expected_output": "新增 orders 域包并在中央 router 中注册 routes 列表（用户显式要求全层，故含 repository，覆盖默认无 repository 约定）；保留或补齐 uv 管理文件、create_app 工厂入口、集中 Settings 配置和统一 logging/get_logger；数据层使用 PostgreSQL ORM 模型和 repository；写入逻辑有明确事务边界；endpoint 返回统一 ApiResponse；业务错误走 AppError/全局 exception handler；补充服务/路由/响应测试；没有新增 @router.* 或 @app.* 路由装饰器。",
       "files": [],
       "expectations": [
-        "The orders module includes schemas.py, models.py, repository.py, service.py, endpoints.py, and routes.py.",
+        "The orders package lives at app/api/v1/orders/ and includes schemas.py, repository.py, service.py, endpoints.py, and routes.py; the Order model lives at app/models/orders.py.",
         "orders/routes.py exposes RouteSpec entries and the central API router registers the orders routes.",
         "Order writes use an explicit service-owned transaction boundary; the repository does not call commit().",
         "Order endpoints return ApiResponse[...] through ok(...) and raise AppError for business failures.",
@@ -44,6 +45,35 @@
         "Error responses are produced through the shared error(...) helper rather than hand-written JSON.",
         "Request ID middleware is pure ASGI and writes request_id into response headers and the response envelope.",
         "/health no longer checks the database; /ready performs the PostgreSQL readiness check."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "给现有 FastAPI 项目加一个 tags 字典表域，就是简单的 CRUD：列出全部、按 id 查、创建、更新、删除。项目已有统一路由注册和统一返回格式，保持一致即可，数据库用 PostgreSQL。",
+      "expected_output": "新增 app/api/v1/tags.py（schemas、端点、RouteSpec routes 列表）和 app/models/tags.py（Tag 模型，经 app/models/__init__.py 再导出）；在中央 router 用 register_routes 注册；不创建 service.py/repository.py（域太薄）；创建 Alembic 迁移；写入端点直接查询 session 并用显式事务包裹；返回统一 ApiResponse；无路由装饰器。",
+      "files": [],
+      "expectations": [
+        "The tags domain is a single module at app/api/v1/tags.py containing schemas, endpoints, and the routes list; the Tag model lives at app/models/tags.py.",
+        "No service.py or repository.py is created for the tags domain.",
+        "The central API router registers the tags routes via register_routes.",
+        "Write endpoints wrap mutations in an explicit transaction and return the ApiResponse envelope.",
+        "The Tag model lives at app/models/tags.py, is re-exported from app/models/__init__.py, and a migration is created or explicitly called out.",
+        "No @router.* or @app.* route decorators are introduced."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "给现有 FastAPI 项目加认证：用户表已有，需要 OAuth2 密码模式登录签发 JWT access token，受保护接口要校验 token 并拿到当前用户。保持统一路由注册、统一返回格式和统一异常处理，密码不能明文存储。",
+      "expected_output": "新增 app/core/security.py（hash/verify 密码 + JWT 编解码，不 import FastAPI）；app/api/dependencies.py 增加 get_current_user 与 CurrentUser 别名，认证失败抛 AppError(401) 走统一 envelope；新增单文件域 app/api/v1/auth.py（Token schema + OAuth2PasswordRequestForm 登录端点 + RouteSpec routes）并在中央 router 注册；User 模型含 hashed_password 且 schema 不外泄；受保护端点用 CurrentUser 参数或 RouteSpec.dependencies；pyjwt/pwdlib/python-multipart 经 uv 添加；token 与密码不落日志。",
+      "files": [],
+      "expectations": [
+        "app/core/security.py contains password hashing and JWT encode/decode and does not import FastAPI.",
+        "Login is a single-file auth domain at app/api/v1/auth.py with RouteSpec registration, returning ApiResponse[Token] through ok(...).",
+        "get_current_user lives in app/api/dependencies.py with a CurrentUser Annotated alias.",
+        "Authentication failures raise AppError with status_code 401 and reach clients through the global handler in the unified envelope.",
+        "Protected routes use the CurrentUser parameter or RouteSpec.dependencies; no route decorators are introduced.",
+        "Auth dependencies (pyjwt, a hashing library, python-multipart) are added through uv.",
+        "Passwords are stored hashed, login returns one generic failure message, and tokens never appear in logs."
       ]
     }
   ]

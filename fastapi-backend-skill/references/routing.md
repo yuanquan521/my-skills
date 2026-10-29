@@ -10,7 +10,7 @@ Do not use FastAPI route decorators such as `@router.get`, `@router.post`, or `@
 
 ```python
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, params
@@ -23,6 +23,7 @@ class RouteSpec:
     methods: list[str]
     name: str | None = None
     response_model: Any | None = None
+    response_class: type | None = None
     status_code: int | None = None
     summary: str | None = None
     description: str | None = None
@@ -40,6 +41,7 @@ def register_routes(router: APIRouter, routes: list[RouteSpec]) -> None:
             methods=route.methods,
             name=route.name,
             response_model=route.response_model,
+            response_class=route.response_class,
             status_code=route.status_code,
             summary=route.summary,
             description=route.description,
@@ -50,16 +52,15 @@ def register_routes(router: APIRouter, routes: list[RouteSpec]) -> None:
         )
 ```
 
-The extra fields cover the common reasons people reach for decorators: dependency injection (`Depends(require_admin)`), hiding internal endpoints (`include_in_schema=False`), and signaling deprecation. Adding them to `RouteSpec` keeps everything in `routes.py` instead of leaking back into `endpoints.py`.
+The extra fields cover the common reasons people reach for decorators: dependency injection (`Depends(require_admin)`), hiding internal endpoints (`include_in_schema=False`), signaling deprecation, and streaming (`response_class` for SSE/JSON Lines/bytes — see `streaming.md`; stream routes are the only envelope exception). Adding them to `RouteSpec` keeps everything in `routes.py` instead of leaking back into `endpoints.py`.
 
 ## Module Endpoint
 
 ```python
+from app.api.dependencies import DbSession, RequestId
+from app.api.v1.users.schemas import UserRead
+from app.api.v1.users.service import UserService
 from app.core.responses import ApiResponse, ok
-from app.db.session import DbSession
-from app.middleware.request_context import RequestId
-from app.modules.users.schemas import UserRead
-from app.modules.users.service import UserService
 
 
 async def list_users(
@@ -77,8 +78,8 @@ Always set `response_model=ApiResponse[...]`. Without it, FastAPI's OpenAPI sche
 ```python
 from app.api.route_registry import RouteSpec
 from app.core.responses import ApiResponse
-from app.modules.users import endpoints
-from app.modules.users.schemas import UserRead
+from app.api.v1.users import endpoints
+from app.api.v1.users.schemas import UserRead
 
 
 routes = [
@@ -99,8 +100,8 @@ routes = [
 from fastapi import APIRouter
 
 from app.api.route_registry import register_routes
-from app.modules.health.routes import routes as health_routes
-from app.modules.users.routes import routes as user_routes
+from app.api.v1.health import routes as health_routes
+from app.api.v1.users import routes as user_routes
 
 
 api_router = APIRouter(prefix="/api/v1")
@@ -109,15 +110,15 @@ register_routes(api_router, health_routes)
 register_routes(api_router, user_routes)
 ```
 
-Adding a new module is a two-step change: drop the module's `routes.py` in place, then import and register it from `app/api/router.py`. Treat this central file as the API surface manifest.
+Adding a new domain is a two-step change: create `app/api/v1/<domain>.py` with schemas, endpoints, and its `routes` list (promote to a package later if growth triggers fire), then import and register the routes from `app/api/router.py`. Both forms import identically. Treat this central file as the API surface manifest.
 
 ## Versioning
 
-When `/api/v2` is needed, create a new central router (`app/api/router_v2.py`) and mount both. Do not version inside individual `routes.py` modules — that re-fragments the registry.
+When `/api/v2` is needed, add an `app/api/v2/` package with its own domain packages and register its routes from the central manifest (`app/api/router.py`). Do not version inside individual `routes.py` modules — that re-fragments the registry.
 
 ## Migration Notes
 
-- Move decorated endpoint functions into `endpoints.py`.
+- Move decorated endpoint functions into the domain module (`<domain>.py`, or `endpoints.py` in package form).
 - Move path, method, tags, status code, response model, dependencies, and visibility flags into `routes.py`.
 - Import each module route list once from the central API router.
 - The static decorator check in `testing.md` will fail the build if a stray decorator slips back in.

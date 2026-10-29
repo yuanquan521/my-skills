@@ -1,0 +1,25 @@
+<svg viewBox="0 0 320 260" width="320" height="260" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#ffffff" />
+  
+  <!-- 四边形 ABCD 纯黑线白底 -->
+  <polygon points="50,180 250,180 250,93.1 193.4,36.5" fill="#ffffff" stroke="#000000" stroke-width="2" />
+  
+  <!-- 直角标记 B -->
+  <polyline points="236,180 236,166 250,166" fill="none" stroke="#000000" stroke-width="1.5" />
+  
+  <!-- 直角标记 D (垂直于AD和CD) -->
+  <polyline points="184.9,45 193.4,53.5 201.9,45" fill="none" stroke="#000000" stroke-width="1.5" />
+  
+  <!-- 45度角弧线 A -->
+  <path d="M 90,180 A 40 40 0 0 0 78.3,151.7" fill="none" stroke="#000000" stroke-width="1.5" />
+  <text x="92" y="168" font-family="'Times New Roman', STSong, 'Songti SC', serif" font-size="16" fill="#000000">45°</text>
+
+  <!-- 顶点标签 Times New Roman 斜体 -->
+  <text x="25" y="190" font-family="'Times New Roman', serif" font-style="italic" font-size="20" fill="#000000">A</text>
+  <text x="258" y="190" font-family="'Times New Roman', serif" font-style="italic" font-size="20" fill="#000000">B</text>
+  <text x="258" y="98" font-family="'Times New Roman', serif" font-style="italic" font-size="20" fill="#000000">C</text>
+  <text x="187" y="24" font-family="'Times New Roman', serif" font-style="italic" font-size="20" fill="#000000">D</text>
+
+  <!-- 试卷图题名 -->
+  <text x="150" y="235" font-family="'Songti SC', STSong, SimSun, serif" font-size="16" fill="#000000" text-anchor="middle">（第 10 题）</text>
+</svg>
