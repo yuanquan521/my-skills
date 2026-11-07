@@ -170,12 +170,25 @@ flask db upgrade
 测试环境同样必须使用迁移管理 Schema。在 `conftest.py` 中可通过以下方式自动应用：
 
 ```python
+import os
+
+import pytest
+from dotenv import load_dotenv
 from flask_migrate import upgrade
+
 
 @pytest.fixture(scope="session")
 def app():
+    load_dotenv()
+    os.environ["FLASK_ENV"] = "testing"
+    if not os.getenv("TEST_DATABASE_URL"):
+        pytest.fail("测试前必须设置 TEST_DATABASE_URL，禁止回退到开发数据库")
+
+    from app import create_app
+
     app = create_app()
+    assert app.config["TESTING"] is True
     with app.app_context():
-        upgrade()  # 自动应用所有迁移
+        upgrade()  # 仅在 TestingConfig 指定的隔离数据库上执行迁移
         yield app
 ```

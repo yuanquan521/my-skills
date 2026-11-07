@@ -242,15 +242,15 @@ Not part of the default contract. No widely-followed FastAPI source — the offi
 
 ```python
 from app.api.route_registry import register_routes
-from app.api.v1.health import routes as health_routes   # single-file domain
-from app.api.v1.orders import routes as order_routes    # package or single file
+from app.api.v1.health import routes as health_routes          # single-file domain
+from app.api.v1.orders.routes import routes as order_routes    # domain package
 
 
 register_routes(api_router, health_routes)
 register_routes(api_router, order_routes)
 ```
 
-`from app.api.v1.orders import routes` resolves identically for `orders.py` and `orders/routes.py`, so promotion is invisible to the registry.
+For a package, import the `routes` list explicitly from `.routes`. `from app.api.v1.orders import routes` would import the `routes.py` module instead of the list and must not be used in the registry.
 
 ## Follow-Up Steps
 

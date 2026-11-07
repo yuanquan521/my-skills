@@ -31,7 +31,7 @@ When a generator script builds the file, do the escaping in code (e.g. Python `h
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{page title} · 摘要</title>
+<title>{escaped page title} · 摘要</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }
@@ -66,7 +66,7 @@ When a generator script builds the file, do the escaping in code (e.g. Python `h
   </div>
 </header>
 
-<div class="tldr"><strong>TL;DR</strong> — {2–4 sentences}</div>
+<div class="tldr"><strong>TL;DR</strong> — {escaped 2–4 sentences}</div>
 
 <h2>关键要点</h2>
 <ul>
@@ -75,7 +75,7 @@ When a generator script builds the file, do the escaping in code (e.g. Python `h
 </ul>
 
 <!-- optional sections for longer sources: 核心论点 / 数据与事实 / 背景 -->
-<h2>{optional section}</h2>
+<h2>{escaped optional section}</h2>
 <p>{escaped content}</p>
 
 <footer>
@@ -91,7 +91,7 @@ When a generator script builds the file, do the escaping in code (e.g. Python `h
 `index.html` uses the same skeleton with:
 
 - `h1` = run label (e.g. `URL 摘要 · {YYYY-MM-DD}`)
-- one `<li>` per URL: `<a href="{file}.html">{escaped title}</a> — {one-line digest} · {状态}` where 状态 is `成功` or `获取失败`
+- one `<li>` per URL: `<a href="{file}.html">{escaped title}</a> — {escaped one-line digest} · {状态}` where 状态 is `成功` or `获取失败`
 - a count line: `共 N 个链接：成功 X · 失败 Y`
 
 ## Constraints

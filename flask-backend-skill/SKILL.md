@@ -190,7 +190,7 @@ my_flask_project/
 ### Response / Exception Management
 
 - **强制响应格式约束**：必须严格按照 [响应封装模板](references/responses.md) 中的代码作为 `app/core/responses.py`。
-- **强制异常处理约束**：业务抛错与全局异常捕获**必须严格原样使用** [异常处理模板](references/exceptions.md) 中的全部代码作为 `app/core/exceptions.py` 并在工厂函数里完成 `register_error_handlers(app)` 注册。
+- **强制异常处理约束**：业务抛错与全局异常捕获**必须严格原样使用** [异常处理模板](references/exceptions.md) 中的全部代码作为 `app/core/exceptions.py`。工厂函数必须调用 `register_error_handlers(app)`，并在 `JWTManager` 初始化后调用 `register_jwt_error_handlers(jwt)`，确保 Pydantic 与 JWT 错误也使用统一响应。
 - 统一 HTTP 状态码与业务错误码映射。遇到业务错误，**一律通过** `raise APIException(...)` 或其子类来中止请求并抛出，交给全局拦截器处理。
 - 视图层禁止手写零散拼装的返回结构。
 

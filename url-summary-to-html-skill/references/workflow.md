@@ -16,8 +16,8 @@ Use this reference when running the fetch → summarize → render pipeline, esp
    - one-line title (from the page, not the URL)
    - TL;DR of 2–4 sentences
    - 5–8 structured key points with concrete facts (numbers, dates, names, claims)
-   - an optional "争议/不确定" (uncertainty) note when the source is speculative or the fallback ladder was used
-6. **Render.** Build the HTML per `references/html-template.md`, escaping all content from step 2.
+   - a "争议/不确定" (uncertainty) note whenever the source is speculative, any fallback step was used, or a fact could not be verified directly; identify which claims came from an alternate source
+6. **Render.** Build the HTML per `references/html-template.md`, escaping all source-derived text and generated summaries, including titles, TL;DRs, and index digests.
 7. **Write and verify.** Save to the current directory per the filename rules, re-read the file head/tail to confirm it is complete, then present it.
 
 ## Failure Note Template
@@ -28,10 +28,12 @@ When a URL fails after the full ladder, its file still renders, with the body re
 <section class="failed">
   <h2>无法获取原文</h2>
   <p>目标 URL：<code>{escaped_url}</code></p>
-  <p>已尝试：直接抓取、重定向后重试、浏览器渲染、搜索回源。</p>
+  <p>已尝试：{escaped list of steps actually performed}.</p>
   <p>可能原因：页面需要登录、付费墙、反爬限制或链接已失效。</p>
 </section>
 ```
+
+List only steps that actually ran. If browser rendering or search was unavailable, omit it from "已尝试" and optionally record that it was not run because the tool was unavailable. Never claim an unexecuted fallback was attempted.
 
 And its index entry is marked `获取失败`.
 

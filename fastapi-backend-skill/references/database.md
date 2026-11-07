@@ -155,7 +155,7 @@ class Base(DeclarativeBase):
 
 
 # Import the models package once so Alembic can discover all metadata.
-# from app import models  # noqa: F401 — re-exported models for Alembic discovery
+from app import models  # noqa: F401 — re-exported models for Alembic discovery
 ```
 
 ## Model Pattern

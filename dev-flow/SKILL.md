@@ -9,12 +9,18 @@ Run the user's standard pipeline end to end in one invocation. The user should n
 
 ## Autonomy contract
 
-- Never stop to ask "shall I continue to the next stage?" — proceed automatically once a stage completes.
-- The ONLY points where you stop for user input are the ones the stages themselves require:
-  1. The grilling interview (its whole point is the user's answers).
+- Proceed automatically after every successful stage; never ask "shall I continue to the next stage?".
+- On the successful path, user input is required only at:
+  1. The grilling interview.
   2. `to-spec`'s seam confirmation.
   3. `to-tickets`' breakdown approval.
-- If the user passed "全自动", "--auto", "yolo", or "don't ask", decide at those gates yourself and record each decision in the spec instead of waiting. Batch the grill questions into one message rather than dripping them.
+  4. Stage 6's approval of retro candidates before applying them.
+- Stop early for missing prerequisites, a blocked / needs-re-scope ticket, or exhausted model fallback. Surface the failure and repository state instead of silently continuing.
+- If the user passed "全自动", "--auto", "yolo", or "don't ask", decide at the first three gates yourself and record each decision in the spec instead of waiting. Batch the grill questions into one message rather than dripping them. Retro changes still require approval.
+
+## Run baseline
+
+At invocation, before any pipeline work is committed, record `START_SHA=$(git rev-parse HEAD)`. Carry this exact SHA through the run and use it as the stage 5 review fixed point; do not recompute a merge-base later.
 
 ## Prerequisite check
 
@@ -48,7 +54,9 @@ Scheduling rules:
 - Implement tickets serially in topological order. WAIT for each sub-agent to finish, spot-check its landed diff and tests, then dispatch the next unblocked ticket.
 - Never dispatch implementation tickets in parallel: they would share the checkout, HEAD, index, and test workspace, so one ticket's commit or tests could include another ticket's unfinished work.
 - If a sub-agent reports blocked / needs-re-scope, STOP and surface it to the user with what was learned — do not patch the plan silently.
-- Model fallback: if a dispatch fails at the MODEL level (unavailable, overloaded, or a persistent API error surviving the harness's own retries), re-dispatch the SAME ticket with the next model down the chain: current → `opus` → `sonnet`. Never go below `sonnet` for tickets. The re-dispatch prompt must note that a previous attempt may have left uncommitted changes in the working tree: run `git status` first and adopt or cleanly discard them before starting.
+- Model fallback: if a dispatch fails at the MODEL level (unavailable, overloaded, or a persistent API error surviving the harness's own retries), re-dispatch the SAME ticket with the next model down the chain: current → `opus` → `sonnet`. Never go below `sonnet` for tickets.
+- Before re-dispatching, inspect `git status`, recent commits, and the diff. If the previous attempt already committed the ticket, do not implement it again: spot-check that commit and its tests, then continue. If it left uncommitted changes, describe them in the re-dispatch prompt; the next agent may adopt only changes verified to belong to this ticket and must leave unrelated or pre-existing changes untouched. Never reset or discard work merely to make a retry clean.
+- If `sonnet` also fails at the model level, STOP. Report the ticket, each attempt's outcome, and the current working-tree state; there is no further fallback.
 - A task-level failure (ticket reported blocked / needs-re-scope) is NOT a model failure — never retry it on another model; surface it to the user.
 
 The `implement` skill's own final `code-review` step stays DEFERRED: stage 5 reviews all tickets together, per the user's flow.
@@ -57,7 +65,7 @@ The `implement` skill's own final `code-review` step stays DEFERRED: stage 5 rev
 
 Read `~/.claude/skills/code-review/SKILL.md` and follow it, with:
 
-- Fixed point: the commit the work started from (`git merge-base HEAD <base-branch>`), not a `HEAD~N` guess.
+- Fixed point: the exact `START_SHA` recorded at invocation, not a `HEAD~N` guess or a merge-base recomputed after the work.
 - Spec source: the spec published in stage 2.
 - Fix or explicitly acknowledge every finding before moving on; commit the fixes.
 

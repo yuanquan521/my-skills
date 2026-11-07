@@ -47,42 +47,85 @@ class DuplicateRecordException(APIException):
 
 ## 全局异常捕获
 
-在 `app/__init__.py` 的 `create_app` 中，调用 `register_error_handlers(app)` 对 `APIException` 以及其他内置异常（如 404, 500 等）进行全局捕获，以确保始终返回标准的响应结果：
+在 `app/__init__.py` 的 `create_app` 中，调用 `register_error_handlers(app)` 对 `APIException`、Pydantic 校验错误以及其他内置异常（如 404、500）进行全局捕获。`JWTManager` 初始化后还必须调用 `register_jwt_error_handlers(jwt)`，覆盖其默认错误响应，确保 JWT 错误同样返回标准结构：
 
 ```python
-from flask import jsonify, Flask, current_app
+from flask import Flask, current_app
+from flask_jwt_extended import JWTManager
+from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
+
 from app.core.exceptions import APIException
+from app.core.responses import fail
+
 
 def register_error_handlers(app: Flask):
     @app.errorhandler(APIException)
     def handle_api_exception(e: APIException):
-        response = {
-            "code": 1,
-            "message": e.message,
-            "data": e.data,
-        }
-        if e.details is not None:
-            response["details"] = e.details
-        return jsonify(response), e.http_status
+        return fail(
+            message=e.message,
+            http_status=e.http_status,
+            data=e.data,
+            details=e.details,
+        )
+
+    @app.errorhandler(ValidationError)
+    def handle_validation_error(e: ValidationError):
+        return fail(
+            message="参数校验失败",
+            http_status=422,
+            details=e.errors(
+                include_url=False,
+                include_context=False,
+                include_input=False,
+            ),
+        )
 
     @app.errorhandler(HTTPException)
     def handle_http_exception(e: HTTPException):
-        response = {
-            "code": 1,
-            "message": getattr(e, "description", str(e)),
-            "data": None,
-        }
-        return jsonify(response), getattr(e, "code", 500)
+        return fail(
+            message=getattr(e, "description", str(e)),
+            http_status=getattr(e, "code", 500),
+        )
 
     @app.errorhandler(Exception)
     def handle_unexpected_exception(e: Exception):
-        # 记录未预期的系统异常日志
         current_app.logger.exception("Unexpected error occurred")
-        response = {
-            "code": 1,
-            "message": "Internal Server Error",
-            "data": None,
-        }
-        return jsonify(response), 500
+        return fail(message="Internal Server Error", http_status=500)
+
+
+def register_jwt_error_handlers(jwt: JWTManager):
+    """在 JWTManager 初始化后调用，覆盖 Flask-JWT-Extended 的默认响应。"""
+
+    @jwt.unauthorized_loader
+    def handle_missing_token(reason: str):
+        return fail(
+            message="缺少认证令牌",
+            http_status=401,
+            details={"reason": reason},
+        )
+
+    @jwt.invalid_token_loader
+    def handle_invalid_token(reason: str):
+        return fail(
+            message="认证令牌无效",
+            http_status=422,
+            details={"reason": reason},
+        )
+
+    @jwt.expired_token_loader
+    def handle_expired_token(_jwt_header, _jwt_payload):
+        return fail(message="认证令牌已过期", http_status=401)
+
+    @jwt.revoked_token_loader
+    def handle_revoked_token(_jwt_header, _jwt_payload):
+        return fail(message="认证令牌已吊销", http_status=401)
+
+    @jwt.needs_fresh_token_loader
+    def handle_fresh_token_required(_jwt_header, _jwt_payload):
+        return fail(message="需要新的认证令牌", http_status=401)
+
+    @jwt.token_verification_failed_loader
+    def handle_token_verification_failed(_jwt_header, _jwt_payload):
+        return fail(message="认证令牌校验失败", http_status=401)
 ```

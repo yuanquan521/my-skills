@@ -60,6 +60,21 @@ class DevelopmentConfig(BaseConfig):
     JWT_COOKIE_SECURE = False
 
 
+class TestingConfig(BaseConfig):
+    """测试环境配置；必须显式使用与当前开发/生产配置不同的数据库"""
+
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = os.getenv("TEST_DATABASE_URL")
+    JWT_COOKIE_SECURE = False
+
+    @classmethod
+    def validate(cls):
+        if not cls.SQLALCHEMY_DATABASE_URI:
+            raise RuntimeError("测试环境必须配置 TEST_DATABASE_URL")
+        if cls.SQLALCHEMY_DATABASE_URI == BaseConfig.SQLALCHEMY_DATABASE_URI:
+            raise RuntimeError("TEST_DATABASE_URL 必须与 DATABASE_URL 指向不同数据库")
+
+
 class ProductionConfig(BaseConfig):
     """生产环境配置；两个密钥都必须显式配置，禁止继承占位值或互相回退"""
 
@@ -93,6 +108,7 @@ class ProductionConfig(BaseConfig):
 # 配置映射表，create_app() 根据 FLASK_ENV 环境变量选择
 config_map = {
     "development": DevelopmentConfig,
+    "testing": TestingConfig,
     "production": ProductionConfig,
 }
 ```
@@ -106,6 +122,8 @@ SECRET_KEY=your-secret-key-here
 
 # ============ Database ============
 DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/mydb
+# 测试必须显式使用独立数据库，pytest 不会回退到 DATABASE_URL
+TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/mydb_test
 # DB_POOL_SIZE=10
 # DB_MAX_OVERFLOW=20
 
@@ -146,7 +164,7 @@ def create_app():
 
     env = os.getenv("FLASK_ENV", "development")
     config_class = config_map.get(env, config_map["development"])
-    if env == "production":
+    if env in {"production", "testing"}:
         config_class.validate()
     app.config.from_object(config_class)
 

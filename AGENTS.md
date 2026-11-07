@@ -116,11 +116,11 @@ One-command full development pipeline: grill the plan (creating ADRs/glossary as
 
 Key non-obvious rules:
 
-- Autonomy contract: never stop between stages. The only user gates are the grill interview, `to-spec`'s seam confirmation, and `to-tickets`' breakdown approval. If the user passes "全自动"/"auto"/"yolo", decide at those gates yourself and record each decision in the spec; batch grill questions into one message.
+- Autonomy contract: proceed between successful stages without asking. Routine user gates are the grill interview, `to-spec`'s seam confirmation, `to-tickets`' breakdown approval, and approval before applying retro candidates. Missing prerequisites, blocked tickets, and exhausted model fallback are failure stops. If the user passes "全自动"/"auto"/"yolo", decide at the first three gates yourself and record each decision in the spec; retro changes still require approval.
 - Tickets are implemented by `ticket-implementer` sub-agents, one fresh context per ticket; the dispatch prompt must carry the ticket body, spec path, pre-agreed test seams, and commit permission, because the sub-agent inherits nothing.
 - Dispatch serially in topological order: wait for each ticket, spot-check its diff and tests, then dispatch the next unblocked ticket. Parallel implementation in one checkout is forbidden because commits and tests would share HEAD, the index, and the working tree.
-- Model fallback applies ONLY to model-level dispatch failures: current → `opus` → `sonnet`, never below `sonnet`. A blocked/needs-re-scope ticket is a task-level failure — surface it to the user, never retry it on another model.
-- The `implement` stage's own `code-review` stays deferred; stage 5 reviews all tickets together against the stage-2 spec, fixed at the merge-base commit.
+- Model fallback applies ONLY to model-level dispatch failures: current → `opus` → `sonnet`, never below `sonnet`. Before retrying, inspect commits and the working tree so a landed ticket is not reimplemented and unrelated changes are preserved. Stop after `sonnet` fails. A blocked/needs-re-scope ticket is a task-level failure — surface it to the user, never retry it on another model.
+- Record `START_SHA` at invocation. The `implement` stage's own `code-review` stays deferred; stage 5 reviews all tickets together against the stage-2 spec, fixed at `START_SHA`.
 
 ## Ticket Implementer Agent (`agents/ticket-implementer.md`)
 
