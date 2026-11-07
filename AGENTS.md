@@ -118,7 +118,7 @@ Key non-obvious rules:
 
 - Autonomy contract: never stop between stages. The only user gates are the grill interview, `to-spec`'s seam confirmation, and `to-tickets`' breakdown approval. If the user passes "全自动"/"auto"/"yolo", decide at those gates yourself and record each decision in the spec; batch grill questions into one message.
 - Tickets are implemented by `ticket-implementer` sub-agents, one fresh context per ticket; the dispatch prompt must carry the ticket body, spec path, pre-agreed test seams, and commit permission, because the sub-agent inherits nothing.
-- Dispatch in topological order (wait for blockers); tickets that don't block each other and touch disjoint files may run in one parallel batch. Spot-check each landed ticket (diff + test run) before the next batch.
+- Dispatch serially in topological order: wait for each ticket, spot-check its diff and tests, then dispatch the next unblocked ticket. Parallel implementation in one checkout is forbidden because commits and tests would share HEAD, the index, and the working tree.
 - Model fallback applies ONLY to model-level dispatch failures: current → `opus` → `sonnet`, never below `sonnet`. A blocked/needs-re-scope ticket is a task-level failure — surface it to the user, never retry it on another model.
 - The `implement` stage's own `code-review` stays deferred; stage 5 reviews all tickets together against the stage-2 spec, fixed at the merge-base commit.
 
@@ -131,7 +131,7 @@ Key non-obvious rules:
 - Opens its report by restating the ticket title so the orchestrator can verify dispatch correctness.
 - TDD at the pre-agreed seams (red → green → refactor); if no seam was agreed, picks the highest existing seam and says so.
 - Runs the FULL test suite once at the end, then commits to the current branch in the repo's existing style — only after green.
-- Touches ONLY the files this ticket needs; sibling tickets may be running in parallel.
+- Touches ONLY the files this ticket needs and reviews the staged diff so unrelated working-tree changes stay out of the commit.
 - Wrong, blocked, or impossible ticket → STOP: no silent re-scoping, no pulling in neighboring tickets. Report what was learned and where the plan breaks.
 
 ## Common Commands

@@ -13,13 +13,16 @@ Use this reference when adding streaming endpoints: Server-Sent Events (SSE), JS
 
 ## `RouteSpec.response_class`
 
-`app/api/route_registry.py` carries the field and passes it through to `add_api_route`:
+`app/api/route_registry.py` defaults the field to `JSONResponse` and passes it through to `add_api_route`. Keep the default non-nullable: passing `response_class=None` makes route registration fail at request time.
 
 ```python
+from fastapi.responses import JSONResponse
+
+
 @dataclass(frozen=True)
 class RouteSpec:
     ...
-    response_class: type | None = None
+    response_class: type = JSONResponse
 
 
 def register_routes(router: APIRouter, routes: list[RouteSpec]) -> None:

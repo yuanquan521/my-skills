@@ -7,6 +7,7 @@
 - 调度器加载器必须从数据库拉取任务配置并动态注册
 - 必须使用 SQLAlchemyJobStore，将调度状态持久化到 PostgreSQL
 - 必须明确使用独立 job store 表（默认 `apscheduler_jobs` 或等价配置）
+- `apscheduler_jobs` 必须通过 [Flask-Migrate 参考](migrate.md#apscheduler-job-store-建表迁移) 中的手工迁移创建，并在启动调度器前执行 `flask db upgrade`；该表不属于 Flask-SQLAlchemy 模型 metadata，不能依赖 autogenerate 发现
 - 调度状态至少应可追踪：任务是否启用、trigger 信息、`next_run_time`
 - 调度进程实例之间不得并发共享同一 jobstore 进行重复调度（必须保证单调度器实例）
 - 任务可调用目标必须为可导入的模块级函数，禁止使用匿名函数/闭包作为持久化任务入口

@@ -92,6 +92,46 @@ flask db current
 flask db history
 ```
 
+## APScheduler Job Store 建表迁移
+
+`SQLAlchemyJobStore` 使用独立 metadata，`flask db migrate` 不会自动发现 `apscheduler_jobs`。首次启用持久化调度器时，先创建空迁移：
+
+```bash
+flask db revision -m "add apscheduler job store"
+```
+
+保留生成的 `revision` 和 `down_revision`，将两个函数替换为以下 APScheduler 3.x 兼容实现，并在启动调度器前执行 `flask db upgrade`：
+
+```python
+from alembic import op
+import sqlalchemy as sa
+
+
+def upgrade():
+    op.create_table(
+        "apscheduler_jobs",
+        sa.Column("id", sa.String(length=191), nullable=False),
+        sa.Column("next_run_time", sa.Float(25), nullable=True),
+        sa.Column("job_state", sa.LargeBinary(), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        "ix_apscheduler_jobs_next_run_time",
+        "apscheduler_jobs",
+        ["next_run_time"],
+    )
+
+
+def downgrade():
+    op.drop_index(
+        "ix_apscheduler_jobs_next_run_time",
+        table_name="apscheduler_jobs",
+    )
+    op.drop_table("apscheduler_jobs")
+```
+
+如果修改了 job store 的 `tablename`，迁移中的表名和索引名必须同步修改。不要通过 `db.create_all()` 或启动时的自动建表替代此迁移。
+
 ## 强制约束
 
 | 规则 | 说明 |

@@ -61,8 +61,23 @@ class DevelopmentConfig(BaseConfig):
 
 
 class ProductionConfig(BaseConfig):
-    """生产环境配置"""
+    """生产环境配置；两个密钥都必须显式配置，禁止继承占位值或互相回退"""
+
     DEBUG = False
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+
+    @classmethod
+    def validate(cls):
+        placeholders = {
+            "change-me-in-production",
+            "your-secret-key-here",
+            "your-jwt-secret-key",
+        }
+        for key in ("SECRET_KEY", "JWT_SECRET_KEY"):
+            value = getattr(cls, key)
+            if not value or value in placeholders:
+                raise RuntimeError(f"生产环境必须配置非占位 {key}")
 
     # 生产连接池独立配置
     SQLALCHEMY_ENGINE_OPTIONS = {
@@ -130,7 +145,10 @@ def create_app():
     app = Flask(__name__)
 
     env = os.getenv("FLASK_ENV", "development")
-    app.config.from_object(config_map.get(env, config_map["development"]))
+    config_class = config_map.get(env, config_map["development"])
+    if env == "production":
+        config_class.validate()
+    app.config.from_object(config_class)
 
     # ... 初始化扩展、注册蓝图等
     return app

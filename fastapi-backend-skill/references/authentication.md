@@ -114,7 +114,9 @@ Notes:
 ## Login Domain: `app/api/v1/auth.py`
 
 ```python
-from fastapi import status
+from typing import Annotated
+
+from fastapi import Depends, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -133,7 +135,7 @@ class Token(BaseModel):
 
 
 async def login_for_access_token(
-    form: OAuth2PasswordRequestForm,
+    form: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DbSession,
     request_id: RequestId,
 ) -> ApiResponse[Token]:

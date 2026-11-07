@@ -45,10 +45,9 @@ Dispatch each ticket to the Agent tool with `subagent_type: "ticket-implementer"
 
 Scheduling rules:
 
-- Work in topological order (blockers first); WAIT for a sub-agent's result before dispatching any ticket it blocks.
-- Tickets that don't block each other AND touch disjoint files may be dispatched together in one parallel batch.
+- Implement tickets serially in topological order. WAIT for each sub-agent to finish, spot-check its landed diff and tests, then dispatch the next unblocked ticket.
+- Never dispatch implementation tickets in parallel: they would share the checkout, HEAD, index, and test workspace, so one ticket's commit or tests could include another ticket's unfinished work.
 - If a sub-agent reports blocked / needs-re-scope, STOP and surface it to the user with what was learned — do not patch the plan silently.
-- Spot-check each landed ticket yourself (diff + test run) before dispatching the next batch.
 - Model fallback: if a dispatch fails at the MODEL level (unavailable, overloaded, or a persistent API error surviving the harness's own retries), re-dispatch the SAME ticket with the next model down the chain: current → `opus` → `sonnet`. Never go below `sonnet` for tickets. The re-dispatch prompt must note that a previous attempt may have left uncommitted changes in the working tree: run `git status` first and adopt or cleanly discard them before starting.
 - A task-level failure (ticket reported blocked / needs-re-scope) is NOT a model failure — never retry it on another model; surface it to the user.
 

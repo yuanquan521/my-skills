@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import APIRouter, params
+from fastapi.responses import JSONResponse
 
 
 @dataclass(frozen=True)
@@ -23,7 +24,7 @@ class RouteSpec:
     methods: list[str]
     name: str | None = None
     response_model: Any | None = None
-    response_class: type | None = None
+    response_class: type = JSONResponse
     status_code: int | None = None
     summary: str | None = None
     description: str | None = None
