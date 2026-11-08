@@ -4,14 +4,12 @@ This file provides guidance to AI coding agents (omp) when working with code in 
 
 ## Repository Overview
 
-This repository contains reusable skill definitions — Python backend scaffolding conventions, content tooling, exam restoration, and a full development pipeline. It is **not** an application — it is a knowledge base of coding standards and templates. Most skill subdirectories are self-contained: a top-level `SKILL.md` plus supporting reference documents.
+This repository contains reusable skill definitions — Python backend scaffolding conventions, content tooling, and exam restoration. It is **not** an application — it is a knowledge base of coding standards and templates. Most skill subdirectories are self-contained: a top-level `SKILL.md` plus supporting reference documents.
 
 - `fastapi-backend-skill/` — Conventions for new FastAPI + PostgreSQL + SQLAlchemy projects.
 - `flask-backend-skill/` — Conventions for new Flask + PostgreSQL + Flask-SQLAlchemy projects.
 - `url-summary-to-html-skill/` — Conventions for summarizing provided URLs into a self-contained HTML page saved in the current directory.
 - `exam-paper-restoration/` — Conventions for restoring clean, blank, authentic exam questions and geometric diagrams from messy photos.
-- `dev-flow/` — One-command full development pipeline: grill → spec → tickets → per-ticket sub-agent implementation → code-review → retro. Single-file skill; it chains other skills installed under `~/.claude/skills/` (symlinks are managed by the user).
-- `agents/ticket-implementer.md` — Sub-agent definition (symlinked into `~/.claude/agents/`) that implements exactly one tracer-bullet ticket with TDD, then commits.
 
 ## Skill Format
 
@@ -22,8 +20,6 @@ Each skill follows the same layout:
 3. `evals/` may contain evaluation data for skill quality.
 
 When asked to scaffold a project, always read the relevant skill's `SKILL.md` first, then load only the reference files needed for the immediate task. Do not copy all references indiscriminately.
-
-Exception: `dev-flow/SKILL.md` is a single-file pipeline skill with no `references/`; it orchestrates other skills installed under `~/.claude/skills/` (`to-spec`, `to-tickets`, `code-review`, `retro`).
 
 ## FastAPI Skill (`fastapi-backend-skill/`)
 
@@ -109,30 +105,6 @@ Key non-obvious rules:
 - "去干扰" means clearing physical marks (handwriting, red marks, pencil drafts), never pruning math conditions or context.
 - Mathematical and arithmetic symbols must strictly use standard typographic symbols (`+`, `-`, `×`, `÷`, `∶`, `∠`, `°`, `∥`, `⊥`, `≈`); never use English abbreviations or programming symbols (`div`, `times`, `*`, `angle`, `deg`, `parallel`, `approx`).
 - Diagrams must strictly match question numbers, preserve geometric fidelity (angles/ratios), have moderate dimensions (280-360px wide, 180-250px high), and never include answer auxiliary lines or scribbles.
-
-## Dev Flow Skill (`dev-flow/`)
-
-One-command full development pipeline: grill the plan (creating ADRs/glossary as you go) → publish a spec → break it into tracer-bullet tickets → implement every ticket via sub-agents → two-axis code-review → retro. It replaces manually chaining the underlying skills and expects them installed under `~/.claude/skills/` (`to-spec`, `to-tickets`, `code-review`, `retro`), plus the issue-tracker configuration from `/setup-matt-pocock-skills` (verified before stage 2).
-
-Key non-obvious rules:
-
-- Autonomy contract: proceed between successful stages without asking. Routine user gates are the grill interview, `to-spec`'s seam confirmation, `to-tickets`' breakdown approval, and approval before applying retro candidates. Missing prerequisites, blocked tickets, and exhausted model fallback are failure stops. If the user passes "全自动"/"auto"/"yolo", decide at the first three gates yourself and record each decision in the spec; retro changes still require approval.
-- Tickets are implemented by `ticket-implementer` sub-agents, one fresh context per ticket; the dispatch prompt must carry the ticket body, spec path, pre-agreed test seams, and commit permission, because the sub-agent inherits nothing.
-- Dispatch serially in topological order: wait for each ticket, spot-check its diff and tests, then dispatch the next unblocked ticket. Parallel implementation in one checkout is forbidden because commits and tests would share HEAD, the index, and the working tree.
-- Model fallback applies ONLY to model-level dispatch failures: current → `opus` → `sonnet`, never below `sonnet`. Before retrying, inspect commits and the working tree so a landed ticket is not reimplemented and unrelated changes are preserved. Stop after `sonnet` fails. A blocked/needs-re-scope ticket is a task-level failure — surface it to the user, never retry it on another model.
-- Record `START_SHA` at invocation. The `implement` stage's own `code-review` stays deferred; stage 5 reviews all tickets together against the stage-2 spec, fixed at `START_SHA`.
-
-## Ticket Implementer Agent (`agents/ticket-implementer.md`)
-
-Sub-agent definition used by `dev-flow` stage 4 (symlinked into `~/.claude/agents/` by the user); it can also be requested directly. It owns exactly ONE ticket provided in its spawn prompt.
-
-Key non-obvious rules:
-
-- Opens its report by restating the ticket title so the orchestrator can verify dispatch correctness.
-- TDD at the pre-agreed seams (red → green → refactor); if no seam was agreed, picks the highest existing seam and says so.
-- Runs the FULL test suite once at the end, then commits to the current branch in the repo's existing style — only after green.
-- Touches ONLY the files this ticket needs and reviews the staged diff so unrelated working-tree changes stay out of the commit.
-- Wrong, blocked, or impossible ticket → STOP: no silent re-scoping, no pulling in neighboring tickets. Report what was learned and where the plan breaks.
 
 ## Common Commands
 
