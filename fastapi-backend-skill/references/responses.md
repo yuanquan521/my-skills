@@ -127,6 +127,36 @@ If a project needs cursor-based pagination instead, swap `Page` for a `CursorPag
 
 Always set `response_model=ApiResponse[...]` on the `RouteSpec` so FastAPI emits the envelope in the OpenAPI schema. See `routing.md`.
 
+## Time Fields (display-ready UTC+8 strings)
+
+When the API explicitly requires display-ready times, datetime fields are serialized as human-readable strings already converted to UTC+8 (`Asia/Shanghai`) in `YYYY-MM-DD HH:MM:SS` form (e.g. `2026-11-09 14:30:00`) — not raw ISO-8601 UTC strings or epoch timestamps. Storage and service logic stay in UTC; the conversion happens only in the response schema, so every endpoint emits times in the same shape:
+
+```python
+from datetime import datetime, timedelta, timezone
+
+from pydantic import BaseModel, field_serializer
+
+UTC_PLUS_8 = timezone(timedelta(hours=8))
+
+
+def to_cn_time(value: datetime) -> str:
+    """UTC datetime (naive treated as UTC) -> readable UTC+8 string."""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(UTC_PLUS_8).strftime("%Y-%m-%d %H:%M:%S")
+
+
+class UserRead(BaseModel):
+    id: int
+    created_at: datetime
+
+    @field_serializer("created_at")
+    def serialize_created_at(self, value: datetime) -> str:
+        return to_cn_time(value)
+```
+
+The conversion lives in the schema layer (`field_serializer`), never inside services or ORM models — endpoints keep returning plain `ApiResponse[...]` envelopes.
+
 ## Usage Notes
 
 - Endpoint functions return `ok(data)` for success and raise `AppError` for failures (handled centrally — see `exceptions.md`). They should not return `error(...)` directly; that helper lives in exception handlers.

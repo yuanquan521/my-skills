@@ -84,6 +84,25 @@ def paginate(query, page: int, per_page: int, serialize_fn=None):
 {"code": 1, "message": "参数校验失败", "data": null, "details": {"username": "不能为空"}}
 ```
 
+## 时间字段（UTC+8 可读字符串）
+
+接口特别要求返回可直接展示的时间时：时间字段必须返回已转换为 UTC+8 的可读字符串，格式 `YYYY-MM-DD HH:MM:SS`（如 `2026-11-09 14:30:00`），禁止裸 ISO UTC 字符串或时间戳。存储与内部逻辑仍使用 UTC，转换只发生在序列化层（`to_dict()` 或 `paginate(query, page, per_page, serialize_fn=...)` 的序列化函数中），保证所有接口输出同一形状。
+
+工具函数放在 `app/core/utils/helpers.py`：
+
+```python
+from datetime import datetime, timedelta, timezone
+
+UTC_PLUS_8 = timezone(timedelta(hours=8))
+
+
+def to_cn_time(value: datetime) -> str:
+    """UTC 时间（naive 视为 UTC）转 UTC+8 可读字符串。"""
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(UTC_PLUS_8).strftime("%Y-%m-%d %H:%M:%S")
+```
+
 ## 使用示例
 
 ### 在视图中返回成功响应

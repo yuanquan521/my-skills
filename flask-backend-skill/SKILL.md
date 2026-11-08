@@ -186,6 +186,7 @@ my_flask_project/
 - 失败响应中 `data` 必须保留且建议为 `null`
 - 错误详情对象不能放在 `data` 中
 - 错误详情需放独立字段（如 `details` / `errors`）
+- 接口特别要求返回可直接展示的时间时：时间字段必须返回已转换为 UTC+8 的可读字符串（`YYYY-MM-DD HH:MM:SS`，如 `2026-11-09 14:30:00`），禁止裸 ISO UTC 字符串或时间戳；存储仍用 UTC，转换只发生在序列化层（工具函数见 [响应封装模板](references/responses.md)）
 
 ### Response / Exception Management
 

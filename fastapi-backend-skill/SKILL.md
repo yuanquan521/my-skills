@@ -112,6 +112,8 @@ Use explicit route registration through a central registry. Do not add FastAPI r
 
 Use one response envelope across the API for both success and error paths. Error envelopes go through the shared `error(...)` helper so they cannot drift from `ApiResponse`. Streaming routes (`RouteSpec.response_class`) are the sole exception; see `references/streaming.md`.
 
+When an API explicitly requires display-ready times, serialize datetime fields as human-readable strings already converted to UTC+8 (`Asia/Shanghai`) in `YYYY-MM-DD HH:MM:SS` form — not raw ISO-8601 UTC strings or epoch timestamps. Storage and internal logic stay in UTC; conversion happens only at the serialization boundary. See `references/responses.md`.
+
 Use typed application exceptions and globally registered exception handlers. Services may raise application errors; repositories should not import FastAPI.
 
 Use one logging module for the whole backend. Configure logging once in the app factory, propagate request IDs through ASGI middleware, and avoid `print` for application logs.
