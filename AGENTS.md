@@ -51,7 +51,7 @@ Key non-obvious rules to keep in mind:
 - No `repository.py` by default. Add `service.py` only when the domain has reusable business rules or multi-step transaction orchestration.
 - Responses must use the shared `ApiResponse` envelope; errors must go through the shared `error(...)` helper.
 - Health (`/health`) must not touch the database; readiness (`/ready`) checks dependencies.
-- When an API explicitly requires display-ready times, datetime fields are serialized as `YYYY-MM-DD HH:MM:SS` strings already converted to UTC+8; storage stays UTC and conversion happens in the response schema.
+- The time pipeline is UTC+8 (`Asia/Shanghai`) end to end: the database stores UTC+8 wall-clock times in naive `DateTime` columns (`now_cn`), and when an API explicitly requires display-ready times, datetime fields serialize as `YYYY-MM-DD HH:MM:SS` strings.
 
 ## Flask Skill (`flask-backend-skill/`)
 
@@ -77,7 +77,7 @@ Key non-obvious rules:
 - The scheduler must run as a separate process (`scripts/run_scheduler.py`) using `BlockingScheduler` and `SQLAlchemyJobStore`; never run it inside the Flask web process.
 - Web logs and scheduler logs must be separate files.
 - All fields require `comment="..."` except `relationship()` declarations, which must never use `comment`.
-- When an API explicitly requires display-ready times, time fields return `YYYY-MM-DD HH:MM:SS` strings already converted to UTC+8; conversion happens in the serialization layer, storage stays UTC.
+- The time pipeline is UTC+8 (`Asia/Shanghai`) end to end: the database stores UTC+8 wall-clock times (`now_cn` in `BaseModel`), and when an API explicitly requires display-ready times, time fields return `YYYY-MM-DD HH:MM:SS` strings.
 
 ## URL Summary Skill (`url-summary-to-html-skill/`)
 

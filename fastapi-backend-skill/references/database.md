@@ -162,13 +162,20 @@ from app import models  # noqa: F401 — re-exported models for Alembic discover
 
 ```python
 # app/models/users.py
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+
+UTC_PLUS_8 = timezone(timedelta(hours=8))
+
+
+def now_cn() -> datetime:
+    """Current UTC+8 wall-clock time (naive) — the one clock used everywhere."""
+    return datetime.now(UTC_PLUS_8).replace(tzinfo=None)
 
 
 class User(Base):
@@ -177,10 +184,12 @@ class User(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
+        DateTime,
+        default=now_cn,
     )
 ```
+
+Time columns store UTC+8 wall-clock time in naive `DateTime` columns (`default=now_cn`), so what is stored is exactly what clients see. Do not mix `DateTime(timezone=True)` / `func.now()` into a project following this convention — that stores absolute instants and renders per session timezone.
 
 ## Alembic Notes
 

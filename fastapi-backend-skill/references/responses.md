@@ -129,7 +129,7 @@ Always set `response_model=ApiResponse[...]` on the `RouteSpec` so FastAPI emits
 
 ## Time Fields (display-ready UTC+8 strings)
 
-When the API explicitly requires display-ready times, datetime fields are serialized as human-readable strings already converted to UTC+8 (`Asia/Shanghai`) in `YYYY-MM-DD HH:MM:SS` form (e.g. `2026-11-09 14:30:00`) — not raw ISO-8601 UTC strings or epoch timestamps. Storage and service logic stay in UTC; the conversion happens only in the response schema, so every endpoint emits times in the same shape:
+The time pipeline is UTC+8 (`Asia/Shanghai`) end to end: the database stores UTC+8 wall-clock times in naive `DateTime` columns (`now_cn` — see `database.md`), so stored values are exactly what clients see. When the API explicitly requires display-ready times, datetime fields serialize as human-readable `YYYY-MM-DD HH:MM:SS` strings (e.g. `2026-11-09 14:30:00`) — not raw ISO-8601 strings or epoch timestamps. Stored values are already UTC+8, so serialization is pure formatting:
 
 ```python
 from datetime import datetime, timedelta, timezone
@@ -140,10 +140,10 @@ UTC_PLUS_8 = timezone(timedelta(hours=8))
 
 
 def to_cn_time(value: datetime) -> str:
-    """UTC datetime (naive treated as UTC) -> readable UTC+8 string."""
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.astimezone(UTC_PLUS_8).strftime("%Y-%m-%d %H:%M:%S")
+    """Naive values are already UTC+8 storage; aware values get converted."""
+    if value.tzinfo is not None:
+        value = value.astimezone(UTC_PLUS_8).replace(tzinfo=None)
+    return value.strftime("%Y-%m-%d %H:%M:%S")
 
 
 class UserRead(BaseModel):
@@ -155,7 +155,7 @@ class UserRead(BaseModel):
         return to_cn_time(value)
 ```
 
-The conversion lives in the schema layer (`field_serializer`), never inside services or ORM models — endpoints keep returning plain `ApiResponse[...]` envelopes.
+The formatting lives in the schema layer (`field_serializer`), never inside services or ORM models — endpoints keep returning plain `ApiResponse[...]` envelopes.
 
 ## Usage Notes
 

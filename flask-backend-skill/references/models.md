@@ -5,15 +5,18 @@
 ## BaseModel 示例 (`app/core/models.py`)
 
 ```python
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import uuid
 from app.extensions.database import db
 from sqlalchemy import DateTime, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
+UTC_PLUS_8 = timezone(timedelta(hours=8))
 
-def utcnow():
-    return datetime.now(timezone.utc)
+
+def now_cn():
+    """当前 UTC+8 本地时间（naive），数据库存储与 API 输出共用此时钟。"""
+    return datetime.now(UTC_PLUS_8).replace(tzinfo=None)
 
 class BaseModel(db.Model):
     """
@@ -31,18 +34,18 @@ class BaseModel(db.Model):
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=utcnow,
+        DateTime,
+        default=now_cn,
         nullable=False,
-        comment="创建时间"
+        comment="创建时间（UTC+8）"
     )
 
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=utcnow,
-        onupdate=utcnow,
+        DateTime,
+        default=now_cn,
+        onupdate=now_cn,
         nullable=False,
-        comment="更新时间"
+        comment="更新时间（UTC+8）"
     )
 
     def save(self):
@@ -66,3 +69,4 @@ class BaseModel(db.Model):
 
 1. 业务模型均继承 `BaseModel`，并重写 `__tablename__`（推荐使用小写复数或具有明确领域意义的命名）。
 2. 可根据项目需要增加软删除标记 `is_deleted` 等共有业务字段。
+3. 时间字段统一存储 UTC+8 本地时间（naive `DateTime` 列），与 API 输出同一时钟；不要改回 `DateTime(timezone=True)`、`func.now()` 或 `datetime.now(timezone.utc)`，否则时间链路会出现两种时区。

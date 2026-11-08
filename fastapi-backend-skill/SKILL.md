@@ -112,7 +112,7 @@ Use explicit route registration through a central registry. Do not add FastAPI r
 
 Use one response envelope across the API for both success and error paths. Error envelopes go through the shared `error(...)` helper so they cannot drift from `ApiResponse`. Streaming routes (`RouteSpec.response_class`) are the sole exception; see `references/streaming.md`.
 
-When an API explicitly requires display-ready times, serialize datetime fields as human-readable strings already converted to UTC+8 (`Asia/Shanghai`) in `YYYY-MM-DD HH:MM:SS` form — not raw ISO-8601 UTC strings or epoch timestamps. Storage and internal logic stay in UTC; conversion happens only at the serialization boundary. See `references/responses.md`.
+The whole time pipeline is UTC+8 (`Asia/Shanghai`): the database stores UTC+8 wall-clock times in naive `DateTime` columns (see `references/database.md`), and when an API explicitly requires display-ready times, datetime fields serialize as human-readable `YYYY-MM-DD HH:MM:SS` strings (e.g. `2026-11-09 14:30:00`) — not raw ISO-8601 strings or epoch timestamps. Storage and API output share one clock: what is stored is what clients see. See `references/responses.md`.
 
 Use typed application exceptions and globally registered exception handlers. Services may raise application errors; repositories should not import FastAPI.
 

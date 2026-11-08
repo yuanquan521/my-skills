@@ -86,7 +86,7 @@ def paginate(query, page: int, per_page: int, serialize_fn=None):
 
 ## 时间字段（UTC+8 可读字符串）
 
-接口特别要求返回可直接展示的时间时：时间字段必须返回已转换为 UTC+8 的可读字符串，格式 `YYYY-MM-DD HH:MM:SS`（如 `2026-11-09 14:30:00`），禁止裸 ISO UTC 字符串或时间戳。存储与内部逻辑仍使用 UTC，转换只发生在序列化层（`to_dict()` 或 `paginate(query, page, per_page, serialize_fn=...)` 的序列化函数中），保证所有接口输出同一形状。
+时间约定全链路统一 UTC+8（`Asia/Shanghai`）：数据库存储的已是 UTC+8 本地时间（见 [模型基类参考](references/models.md) 的 `now_cn`），接口特别要求返回可直接展示的时间时，序列化只做格式化——在 `to_dict()` 或 `paginate(query, page, per_page, serialize_fn=...)` 的序列化函数中调用 `to_cn_time(...)`，输出 `YYYY-MM-DD HH:MM:SS`（如 `2026-11-09 14:30:00`），禁止裸 ISO 字符串或时间戳。
 
 工具函数放在 `app/core/utils/helpers.py`：
 
@@ -97,10 +97,10 @@ UTC_PLUS_8 = timezone(timedelta(hours=8))
 
 
 def to_cn_time(value: datetime) -> str:
-    """UTC 时间（naive 视为 UTC）转 UTC+8 可读字符串。"""
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.astimezone(UTC_PLUS_8).strftime("%Y-%m-%d %H:%M:%S")
+    """存储值已是 UTC+8（naive），直接格式化；aware 值先换算成 UTC+8。"""
+    if value.tzinfo is not None:
+        value = value.astimezone(UTC_PLUS_8).replace(tzinfo=None)
+    return value.strftime("%Y-%m-%d %H:%M:%S")
 ```
 
 ## 使用示例
