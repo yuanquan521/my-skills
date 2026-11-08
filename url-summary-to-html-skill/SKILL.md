@@ -27,7 +27,7 @@ Keep this `SKILL.md` as the operating guide. Load reference files only when the 
 
 **One file per URL, self-contained.** No CDN links, no external fonts, no JavaScript dependencies — inline CSS only, so the file opens correctly offline and survives link rot. Keep the total page under ~2000 lines.
 
-**Summarize in the language of the user's request.** If the user asks in Chinese, the summary is in Chinese even when the source is English. Keep proper nouns and technical terms in their original form.
+**Summarize in Chinese.** The whole page — chrome labels and summary body alike — is written in Chinese, regardless of the source language or the language of the user's request. Keep proper nouns and technical terms in their original form.
 
 **Deterministic filenames.** `<slug>.html` where `slug` is a lowercase kebab-case token derived from the page title (fall back to the domain when the title is unusable). More than one URL in a run also writes `index.html` in the current directory. Never overwrite an existing file — append `-2`, `-3`, ... on collision.
 

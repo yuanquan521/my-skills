@@ -12,7 +12,7 @@ Use this reference when running the fetch → summarize → render pipeline, esp
    2. Fetch with a browser-style tool (rendered page) when available, for JS-heavy sites.
    3. Search for the page title + domain to recover a cached/alternate summary of the same content.
    4. Declare the URL unreadable and write a placeholder summary stating what was tried. Never fabricate the missing content.
-5. **Summarize.** Produce, in the user's language:
+5. **Summarize.** Produce, in Chinese:
    - one-line title (from the page, not the URL)
    - TL;DR of 2–4 sentences
    - 5–8 structured key points with concrete facts (numbers, dates, names, claims)

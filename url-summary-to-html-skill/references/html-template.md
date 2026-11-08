@@ -97,6 +97,6 @@ When a generator script builds the file, do the escaping in code (e.g. Python `h
 ## Constraints
 
 - Total file size target: under 100 KB; do not embed source images.
-- `lang` matches the summary language (`zh-CN` for Chinese summaries).
+- `lang` is `zh-CN`; all page text (chrome labels and summary content) is Chinese.
 - No `<script>` tags. No external `<link>`, `@import`, or `url(...)` references.
 - Keep valid structure: one `<h1>`, sections under `<h2>`, closed list items.
