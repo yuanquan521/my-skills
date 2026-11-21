@@ -1,6 +1,6 @@
 ---
 name: watch
-description: Watch a video (URL or local path). Downloads with yt-dlp, extracts auto-scaled frames with ffmpeg, pulls the transcript from captions (or local WhisperX / cloud Whisper fallback), and hands the result to the agent so it can answer questions about what's in the video. With a Gemini API key, Google's agentic video model watches the full video instead.
+description: Watch a video (URL or local path) and produce a visual HTML summary document using answer-me-with-html. Downloads with yt-dlp, extracts auto-scaled frames with ffmpeg, pulls the transcript from captions (or local WhisperX / cloud Whisper fallback), or uses Google's Gemini video model when configured, then renders the result into a single-file HTML document via answer-me-with-html.
 license: MIT
 allowed-tools: Bash, Read, AskUserQuestion
 metadata:
@@ -153,7 +153,17 @@ Cloud fallbacks extract mono 16 kHz MP3 and upload within a conservative 24,000,
 
 For download failures, use the bounded original error and its diagnostic hint. A 403 has no generic fix, but first update yt-dlp with its owning package manager (e.g. `brew upgrade yt-dlp`, `pipx upgrade yt-dlp`) and retry once. Do not hardcode alternate clients, cycle cookies, or disable TLS verification. Preserve available captions when media/probing fails. For hosted environments, local uploads solve downloading only; cloud ASR and cold local-model setup still need permitted network access.
 
-For follow-ups, reuse evidence already viewed before rerunning. Remove only the disposable **Work dir** created by this invocation when no longer needed. Never delete the parent supplied with `--out-dir`, a user source file, the local venv, or model caches as routine cleanup.
+For follow-ups, reuse evidence already viewed before rerunning. **Render the HTML output document via `answer-me-with-html` before cleaning up the disposable `Work dir`** (so any embedded keyframe images still exist on disk when `am render` reads them). After rendering succeeds, remove only the disposable **Work dir** created by this invocation when no longer needed. Never delete the parent supplied with `--out-dir`, a user source file, the local venv, or model caches as routine cleanup.
+
+## Output HTML document via answer-me-with-html
+
+Unless the user explicitly asks for a plain-text-only chat reply, always turn the video analysis/summary into a standalone HTML document using the **`answer-me-with-html`** skill (`scripts/am.mjs`) rather than hand-writing HTML or stopping at terminal text.
+
+1. **Locate `answer-me-with-html`**: resolve `<watch-skill-dir>/../answer-me-with-html/scripts/am.mjs` first; if absent, check `~/.agents/skills/answer-me-with-html/scripts/am.mjs`, `~/.claude/skills/answer-me-with-html/scripts/am.mjs`, `~/.dsh/skills/answer-me-with-html/scripts/am.mjs`, `~/.finch/skills/answer-me-with-html/scripts/am.mjs`, or global `am`. Read that skill's `SKILL.md` if you need component syntax details.
+2. **Draft structure**: write an extended Markdown draft matching the user's language (`template: doc` works best for tutorials and structured video summaries; use `timeline`, `flow`, tables, callouts, and code blocks as appropriate, and cite `MM:SS` timestamps for key points). Include `source:` in frontmatter with the video URL or filename.
+3. **Embed keyframe screenshots while `Work dir` still exists**: for local runs, pick only the frames that genuinely clarify visual steps (slides, UI, diagrams, board notes) and embed them on their own line as `![说明](/abs/path/to/frame.jpg)`. `am render` inlines those local images into the single HTML file.
+4. **Render to the default single output folder**: run `node "<answer-me-with-html-dir>/scripts/am.mjs" render - <<'AM_EOF' ... AM_EOF` with no `-o` override (so output lands directly in `/Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/` as configured by `answer-me-with-html`), unless the user explicitly requested another path or rendering fails with `Cannot write the page`.
+5. **Clean up & reply**: delete the disposable `Work dir` only after `am render` succeeds (`✓ <path>`), then reply concisely in 2–3 lines with the core conclusion and the clickable `file://` link to the generated HTML document.
 
 ## Security and runtime access
 
