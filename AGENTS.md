@@ -97,17 +97,19 @@ Key non-obvious rules:
 
 Use for restoring clean, blank original exam problems and print-quality geometric figures from messy, graded, or handwritten photos. Core rules are documented in `exam-paper-restoration/SKILL.md`.
 
-- `references/intent-clarification.md` — Anti-ambiguity guide for physical vs semantic noise, symbol normalization, and common traps.
+- `references/intent-clarification.md` — Anti-ambiguity guide for physical vs semantic noise, handwritten vs printed marks, unclear/occluded fallback, and full symbol normalization table.
+- `references/question-types-and-output.md` — Restoration templates across question types, diagram redraw boundaries, and self-contained A4 printable HTML skeleton.
 - `examples/demo.md` — Before-and-after restoration pairs.
 - `resources/` — Sample vector diagrams (`orig_q10.svg`, `orig_q12.svg`) referenced by `examples/demo.md`.
-- `scripts/render_geometry.py` — Vector geometric diagram rendering helper.
+- `scripts/render_geometry.py` — CLI & library helper to validate and render vector SVG diagrams to high-DPI PNG with multi-backend fallback.
 
 Key non-obvious rules:
 
-- Never modify or summarize problem statements: 100% literal fidelity (retain all background stories, labels, units, and punctuation).
+- Never modify or summarize problem statements: 100% literal fidelity (retain all background stories, labels, units in their original form, and punctuation).
 - "去干扰" means clearing physical marks (handwriting, red marks, pencil drafts), never pruning math conditions or context.
+- Never silently guess obscured, blurry, or cropped text/numbers: mark `[待核对：...]` in place and summarize uncertainties at the end.
 - Mathematical and arithmetic symbols must strictly use standard typographic symbols (`+`, `-`, `×`, `÷`, `∶`, `∠`, `°`, `∥`, `⊥`, `≈`); never use English abbreviations or programming symbols (`div`, `times`, `*`, `angle`, `deg`, `parallel`, `approx`).
-- Diagrams must strictly match question numbers, preserve geometric fidelity (angles/ratios), have moderate dimensions (280-360px wide, 180-250px high), and never include answer auxiliary lines or scribbles.
+- Diagrams must strictly match question numbers, preserve geometric fidelity (angles/ratios), keep moderate width (~280-400px) with height adapting naturally to geometric proportions, and never include answer auxiliary lines or scribbles.
 
 ## Common Commands
 
