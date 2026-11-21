@@ -68,6 +68,7 @@ def decode_access_token(token: str) -> dict:
 
 ```python
 from typing import Annotated
+from uuid import UUID
 
 import jwt
 from fastapi import Depends
@@ -92,10 +93,11 @@ async def get_current_user(
         subject = payload.get("sub")
         if subject is None or payload.get("type") != "access":
             raise AppError("UNAUTHORIZED", "Invalid credentials", status_code=401)
-    except jwt.PyJWTError as exc:
+        user_id = UUID(str(subject))
+    except (jwt.PyJWTError, ValueError) as exc:
         raise AppError("UNAUTHORIZED", "Invalid credentials", status_code=401) from exc
 
-    result = await db.execute(select(User).where(User.id == subject))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
         raise AppError("UNAUTHORIZED", "Invalid credentials", status_code=401)

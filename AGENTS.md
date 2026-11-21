@@ -99,6 +99,7 @@ Use for restoring clean, blank original exam problems and print-quality geometri
 
 - `references/intent-clarification.md` — Anti-ambiguity guide for physical vs semantic noise, symbol normalization, and common traps.
 - `examples/demo.md` — Before-and-after restoration pairs.
+- `resources/` — Sample vector diagrams (`orig_q10.svg`, `orig_q12.svg`) referenced by `examples/demo.md`.
 - `scripts/render_geometry.py` — Vector geometric diagram rendering helper.
 
 Key non-obvious rules:

@@ -7,6 +7,7 @@
 ## 响应封装示例 (`app/core/responses.py`)
 
 ```python
+import math
 from flask import jsonify
 
 
@@ -46,24 +47,27 @@ def paginate(query, page: int, per_page: int, serialize_fn=None):
     """
     统一分页响应封装
 
-    :param query: SQLAlchemy 查询对象（未执行 .all()）
+    :param query: `db.session.query(Model)...` 查询对象（未执行 .all()）
     :param page: 当前页码（从 1 开始）
     :param per_page: 每页条数
     :param serialize_fn: 可选的序列化函数，用于把模型实例转换成 dict
     :return: Flask JSON Response
     """
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    items = pagination.items
+    page = max(1, page)
+    per_page = max(1, per_page)
+    total = query.count()
+    items = query.offset((page - 1) * per_page).limit(per_page).all()
+    pages = math.ceil(total / per_page) if total > 0 else 0
 
     if serialize_fn:
         items = [serialize_fn(item) for item in items]
 
     return success(data={
         "items": items,
-        "total": pagination.total,
-        "page": pagination.page,
-        "per_page": pagination.per_page,
-        "pages": pagination.pages,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "pages": pages,
     })
 ```
 
@@ -86,7 +90,7 @@ def paginate(query, page: int, per_page: int, serialize_fn=None):
 
 ## 时间字段（UTC+8 可读字符串）
 
-时间约定全链路统一 UTC+8（`Asia/Shanghai`）：数据库存储的已是 UTC+8 本地时间（见 [模型基类参考](references/models.md) 的 `now_cn`），接口特别要求返回可直接展示的时间时，序列化只做格式化——在 `to_dict()` 或 `paginate(query, page, per_page, serialize_fn=...)` 的序列化函数中调用 `to_cn_time(...)`，输出 `YYYY-MM-DD HH:MM:SS`（如 `2026-11-09 14:30:00`），禁止裸 ISO 字符串或时间戳。
+时间约定全链路统一 UTC+8（`Asia/Shanghai`）：数据库存储的已是 UTC+8 本地时间（见 [模型基类参考](models.md) 的 `now_cn`），接口特别要求返回可直接展示的时间时，序列化只做格式化——在 `to_dict()` 或 `paginate(query, page, per_page, serialize_fn=...)` 的序列化函数中调用 `to_cn_time(...)`，输出 `YYYY-MM-DD HH:MM:SS`（如 `2026-11-09 14:30:00`），禁止裸 ISO 字符串或时间戳。
 
 工具函数放在 `app/core/utils/helpers.py`：
 
@@ -105,30 +109,39 @@ def to_cn_time(value: datetime) -> str:
 
 ## 使用示例
 
-### 在视图中返回成功响应
+### 在蓝图函数视图中返回成功响应
 
 ```python
+from flask import Blueprint, request
+from app.core.exceptions import NotFoundException
 from app.core.responses import success, paginate
+from app.extensions.database import db
+from app.models.user import User
 
-class UserResource(Resource):
-    def get(self, user_id):
-        user = User.get_by_id(user_id)
-        if not user:
-            raise NotFoundException("用户不存在")
-        return success(data=user.to_dict())
+users_bp = Blueprint("users", __name__, url_prefix="/api/users")
 
-    def post(self):
-        # ... 创建逻辑
-        return success(data=new_user.to_dict(), message="创建成功", http_status=201)
+
+@users_bp.get("/<uuid:user_id>")
+def get_user(user_id):
+    user = db.session.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise NotFoundException("用户不存在")
+    return success(data=user.to_dict())
+
+
+@users_bp.post("")
+def create_user():
+    # ... 校验并创建逻辑（由 Service 层持久化）
+    return success(data=new_user.to_dict(), message="创建成功", http_status=201)
 ```
 
 ### 分页查询
 
 ```python
-class UserListResource(Resource):
-    def get(self):
-        page = request.args.get("page", 1, type=int)
-        per_page = request.args.get("per_page", 20, type=int)
-        query = User.query.order_by(User.created_at.desc())
-        return paginate(query, page, per_page, serialize_fn=lambda u: u.to_dict())
+@users_bp.get("")
+def list_users():
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 20, type=int)
+    query = db.session.query(User).order_by(User.created_at.desc())
+    return paginate(query, page, per_page, serialize_fn=lambda u: u.to_dict())
 ```

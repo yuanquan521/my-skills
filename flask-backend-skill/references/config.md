@@ -52,8 +52,6 @@ class BaseConfig:
     SCHEDULER_ENABLED = os.getenv("SCHEDULER_ENABLED", "true").lower() == "true"
 
 
-
-
 class DevelopmentConfig(BaseConfig):
     """开发环境配置"""
     DEBUG = True
@@ -103,8 +101,6 @@ class ProductionConfig(BaseConfig):
     }
 
 
-
-
 # 配置映射表，create_app() 根据 FLASK_ENV 环境变量选择
 config_map = {
     "development": DevelopmentConfig,
@@ -145,8 +141,6 @@ LOG_LEVEL=INFO
 
 # ============ Scheduler ============
 SCHEDULER_ENABLED=true
-
-
 
 # ============ Gunicorn ============
 GUNICORN_BIND=127.0.0.1:9000

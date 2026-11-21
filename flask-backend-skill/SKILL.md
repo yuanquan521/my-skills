@@ -1,6 +1,6 @@
 ---
 name: flask-backend-skill
-description: Generate a pure Flask backend API project in the current directory with app factory, PostgreSQL, Flask-SQLAlchemy, psycopg3, JWT, Pydantic, Loguru, optional Redis, and a standalone APScheduler process sharing Flask config and task code.
+description: Generate a pure Flask backend API project in the current directory with app factory, PostgreSQL, Flask-SQLAlchemy, psycopg3, JWT, Pydantic, Loguru, optional Redis, and a standalone APScheduler process sharing Flask config and task code. Use whenever creating or refactoring a Flask + PostgreSQL backend, or when the user mentions Flask 后端, 工厂模式, Flask-SQLAlchemy, Flask-Migrate, APScheduler, 独立调度进程, or 统一返回 (code/message/data).
 allowed-tools: Read Write Edit MultiEdit Glob Grep Bash
 compatibility: Requires Python 3.12+, PostgreSQL, and uv package manager. Compatible with Claude Code and OpenCode.
 ---
@@ -316,7 +316,6 @@ tests/
 | [exceptions.md](references/exceptions.md) | 统一异常类与全局错误捕获 |
 | [responses.md](references/responses.md) | 统一响应封装（success/fail/paginate） |
 | [logger.md](references/logger.md) | Loguru 日志配置与 Flask 桥接 |
-
 | [gunicorn-config.md](references/gunicorn-config.md) | Gunicorn 生产配置文件模板 |
 | [scheduler-architecture.md](references/scheduler-architecture.md) | 调度器架构详细约束 |
 | [scheduler-api.md](references/scheduler-api.md) | 调度器 API 接口规范 |

@@ -65,13 +65,11 @@ For new projects, converge on this layout:
 - `app/core/config.py`
 - `app/core/exceptions.py`
 - `app/core/exception_handlers.py`
-- `app/core/errors.py`
 - `app/core/security.py` (password hashing and JWT helpers; no FastAPI imports — present when authentication is)
 - `app/core/logging.py`
 - `app/core/responses.py`
 - `app/db/base.py`
 - `app/db/session.py`
-- `app/db/migrations.py`
 - `app/middleware/request_context.py`
 - `app/api/v1/health.py`
 - `app/api/v1/<domain>.py` (single-file domain — the default starting form)
@@ -85,6 +83,7 @@ For new projects, converge on this layout:
 - `.python-version`
 - `pyproject.toml`
 - `uv.lock`
+- `alembic.ini`
 - `alembic/env.py`
 - `alembic/versions/`
 - `tests/conftest.py`
