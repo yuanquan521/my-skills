@@ -11,5 +11,3 @@
 3. `url-summary-to-html-skill/` — 归纳总结提供的 URL，产出自包含 HTML 并保存在当前目录。
 
 4. `exam-paper-restoration/` — 试卷原题还原与错题翻新规范（去手写批改痕迹、标准符号与几何配图重绘）。
-
-更多仓库级约定与各 Skill 参考索引见 [AGENTS.md](AGENTS.md)。

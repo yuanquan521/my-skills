@@ -1,0 +1,82 @@
+[
+  {
+    "query": "帮我把这张拍下来的小学数学试卷照片重新整理原题，去掉学生手写笔迹和红笔打叉",
+    "should_trigger": true
+  },
+  {
+    "query": "我拍了两张孩子的期中错题照片，只把打红叉的错题提取出来做成可打印的 A4 空白错题卷 HTML，几何图要重绘成干净黑白图",
+    "should_trigger": true
+  },
+  {
+    "query": "帮忙错题翻新一下这张练习册截图，把上面的铅笔草稿和涂改去掉，原题文字一个字都别改",
+    "should_trigger": true
+  },
+  {
+    "query": "Restore these graded geometry worksheet photos into clean blank questions with print-quality black-and-white SVG figures.",
+    "should_trigger": true
+  },
+  {
+    "query": "这道几何题照片里学生画了辅助线还标了一堆铅笔数字，帮我提取原题和原版纯净配图，存疑看不清的地方标出来别瞎猜",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把这三张拍照的期末卷整理成错题本格式，空白原题放前面，参考答案放最后单独一页",
+    "should_trigger": true
+  },
+  {
+    "query": "试卷还原：照片下方并排拍了第10、11、12题三个图形，帮我拆开准确对应题号并导出高清 PNG 发微信",
+    "should_trigger": true
+  },
+  {
+    "query": "把这张带老师红笔批注的表格应用题还原成干净的 Markdown 空白题，保留所有已知条件和原单位",
+    "should_trigger": true
+  },
+  {
+    "query": "Clean up this messy textbook photo and remove all handwriting, scribbles, and adjacent question clutter while preserving exact wording.",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把孩子作业本上做错的四则运算和分数题去掉干扰因素整理成空白重测卷",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我直接解一下这道初中几何证明题，给出完整的辅助线作法和证明步骤",
+    "should_trigger": false
+  },
+  {
+    "query": "用 Python matplotlib 帮我画一张 2026 年季度营收对比柱状图并保存为 PNG",
+    "should_trigger": false
+  },
+  {
+    "query": "把这个网页链接 https://example.com/math-blog 总结成一个自包含的中文 HTML 文件保存到当前目录",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把这份扫描版 PDF 合同里的甲方、乙方和违约金条款提取成 JSON",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我出 10 道五年级下册分数加减法的新练习题，附带答案",
+    "should_trigger": false
+  },
+  {
+    "query": "用 FastAPI + PostgreSQL 搭一个在线题库后端接口，管理试卷和错题记录",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我优化这个前端 React 页面里的 SVG 图标动画和暗黑模式配色",
+    "should_trigger": false
+  },
+  {
+    "query": "把这张产品架构白板照片整理成一篇 Mermaid 流程图和 Markdown 技术文档",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我写一个 Flask 定时任务，每天晚上把学生成绩汇总发邮件",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把这张旅游风景照里的路人 P 掉并调亮画面",
+    "should_trigger": false
+  }
+]

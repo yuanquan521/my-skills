@@ -32,14 +32,12 @@ class Settings(BaseSettings):
 
 ## `app/core/security.py`
 
-Hashing wrappers come from `security.md`; this module also owns the token format:
+Hashing wrappers come from `security.md`; this module also owns the token format. Pass `secret_key` explicitly rather than calling `get_settings()` here — that keeps `create_app(test_settings)` isolated when tests inject different settings:
 
 ```python
 from datetime import datetime, timedelta, timezone
 
 import jwt
-
-from app.core.config import get_settings
 
 ALGORITHM = "HS256"
 
@@ -48,18 +46,19 @@ def hash_password(password: str) -> str: ...      # pwdlib / passlib per securit
 def verify_password(password: str, hashed_password: str) -> bool: ...
 
 
-def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
-    settings = get_settings()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
-    )
+def create_access_token(
+    subject: str,
+    *,
+    secret_key: str,
+    expires_delta: timedelta,
+) -> str:
+    expire = datetime.now(timezone.utc) + expires_delta
     payload = {"sub": subject, "exp": expire, "type": "access"}
-    return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)
+    return jwt.encode(payload, secret_key, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> dict:
-    settings = get_settings()
-    return jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+def decode_access_token(token: str, *, secret_key: str) -> dict:
+    return jwt.decode(token, secret_key, algorithms=[ALGORITHM])
 ```
 
 `jwt.decode` raises `jwt.PyJWTError` on expiry/tampering; the dependency below translates that into an `AppError`.
@@ -71,10 +70,11 @@ from typing import Annotated
 from uuid import UUID
 
 import jwt
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 
+from app.core.config import Settings
 from app.core.exceptions import AppError
 from app.core.security import decode_access_token
 from app.models import User
@@ -84,23 +84,46 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 # DbSession / RequestId aliases also live here (see module-template.md)
 
 
+def get_app_settings(request: Request) -> Settings:
+    return request.app.state.settings
+
+
+AppSettings = Annotated[Settings, Depends(get_app_settings)]
+
+
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     db: DbSession,
+    settings: AppSettings,
 ) -> User:
     try:
-        payload = decode_access_token(token)
+        payload = decode_access_token(token, secret_key=settings.secret_key)
         subject = payload.get("sub")
         if subject is None or payload.get("type") != "access":
-            raise AppError("UNAUTHORIZED", "Invalid credentials", status_code=401)
+            raise AppError(
+                "UNAUTHORIZED",
+                "Invalid credentials",
+                status_code=401,
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         user_id = UUID(str(subject))
     except (jwt.PyJWTError, ValueError) as exc:
-        raise AppError("UNAUTHORIZED", "Invalid credentials", status_code=401) from exc
+        raise AppError(
+            "UNAUTHORIZED",
+            "Invalid credentials",
+            status_code=401,
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if user is None:
-        raise AppError("UNAUTHORIZED", "Invalid credentials", status_code=401)
+        raise AppError(
+            "UNAUTHORIZED",
+            "Invalid credentials",
+            status_code=401,
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 
@@ -110,12 +133,14 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 Notes:
 
 - `DbSession` is the alias this file already exports; `get_db` is its underlying dependency.
+- `AppSettings` reads `request.app.state.settings` so `create_app(test_settings)` works cleanly in tests without mutating env vars or clearing `get_settings.cache_clear()`.
+- Because `exception_handlers.py` registers `StarletteHTTPException`, missing-token 401 errors raised by `OAuth2PasswordBearer` automatically return the unified `ApiResponse` envelope with `code="UNAUTHORIZED"` and `WWW-Authenticate: Bearer`.
 - The user lookup is one `select` — thin enough to live directly in the dependency. If auth grows (roles, permissions, caching), move the lookup into the users domain's `service.py` and call it from here.
-- If the project needs the RFC 6750 `WWW-Authenticate: Bearer` header on 401 responses, extend `AppError` with an optional `headers: dict[str, str] | None` and pass it through `app_error_handler` in `exception_handlers.py`. Do not hand-roll a separate 401 path.
 
 ## Login Domain: `app/api/v1/auth.py`
 
 ```python
+from datetime import timedelta
 from typing import Annotated
 
 from fastapi import Depends, status
@@ -123,7 +148,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from app.api.dependencies import DbSession, RequestId
+from app.api.dependencies import AppSettings, DbSession, RequestId
 from app.api.route_registry import RouteSpec
 from app.core.exceptions import AppError
 from app.core.responses import ApiResponse, ok
@@ -139,13 +164,18 @@ class Token(BaseModel):
 async def login_for_access_token(
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: DbSession,
+    settings: AppSettings,
     request_id: RequestId,
 ) -> ApiResponse[Token]:
     result = await db.execute(select(User).where(User.email == form.username))
     user = result.scalar_one_or_none()
     if user is None or not verify_password(form.password, user.hashed_password):
         raise AppError("UNAUTHORIZED", "Incorrect username or password", status_code=401)
-    token = create_access_token(subject=str(user.id))
+    token = create_access_token(
+        subject=str(user.id),
+        secret_key=settings.secret_key,
+        expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
+    )
     return ok(Token(access_token=token), request_id=request_id)
 
 

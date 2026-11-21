@@ -1,0 +1,41 @@
+{
+  "skill_name": "url-summary-to-html-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我把这篇英文技术文章归纳成一份中文 HTML 摘要，保存在当前目录：https://docs.python.org/3/whatsnew/3.12.html",
+      "expected_output": "先抓取目标 URL 内容，提炼中文 TL;DR 与 5-8 条关键要点，调用 scripts/render_summary.py 在当前目录生成自包含、纯内联 CSS、无外部资源、正确转义的单个 .html 文件（如 python-3-12-whats-new.html），并确认文件非空后向用户汇报路径。",
+      "files": [],
+      "expectations": [
+        "The URL content is actually fetched before summarizing rather than guessed from memory.",
+        "scripts/render_summary.py is invoked to generate the HTML file in the current working directory.",
+        "The generated HTML file is written in Chinese (lang='zh-CN'), self-contained with inline CSS only, and contains no <script> tags or external CDN links.",
+        "The filename is a readable kebab-case .html name and does not overwrite existing files.",
+        "The HTML header/footer contains the real current fetch date and a validated link to the original URL."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "把下面三个链接批量总结成离线 HTML 阅读页放到当前目录，其中一个链接可能打不开，打不开的如实标注不要编造：\n1. https://peps.python.org/pep-0008/\n2. https://example.com/nonexistent-404-page-test\n3. https://fastapi.tiangolo.com/",
+      "expected_output": "逐一抓取 3 个 URL；可抓取的生成中文结构化摘要，打不开的按降级阶梯尝试后以 status='failed' 渲染「无法获取原文」说明（仅列出真实执行过的步骤）；通过 scripts/render_summary.py 在当前目录产出 3 个独立 HTML 文件和 1 个 index.html（含成功/失败计数与各文件链接）。",
+      "files": [],
+      "expectations": [
+        "Three individual .html files plus one index.html are generated in the current working directory.",
+        "The unreachable URL renders a '无法获取原文' failure section listing only fallback steps that actually ran, with zero fabricated article content.",
+        "index.html lists all 3 items with links to their local files, status badges ('成功' / '获取失败'), and an accurate summary count.",
+        "All text is properly HTML-escaped and all href values are validated against http/https/mailto."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "帮我总结这篇中文技术博客并落地为 HTML 保存在当前目录，注意文件名要可读，不要叫 domain-2.html 这种看不出内容的名称。",
+      "expected_output": "抓取中文博客内容后，为 JSON 提供可读的英文 kebab-slug（或由脚本保留可读中文 slug），通过 scripts/render_summary.py 输出单个自包含中文 HTML 文件，且原文中若包含 HTML/JS 代码片段均被严格转义为纯文本展示。",
+      "files": [],
+      "expectations": [
+        "The output filename is descriptive (English kebab-slug or readable Chinese slug) rather than a generic domain-only fallback.",
+        "Any HTML tags or code snippets quoted from the source page are escaped as plain text and never execute or break page structure.",
+        "The page contains TL;DR, 5-8 structured key points, and real fetch date without redundant duplicate date labels."
+      ]
+    }
+  ]
+}

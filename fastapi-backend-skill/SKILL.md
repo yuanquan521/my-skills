@@ -1,6 +1,6 @@
 ---
-name: fastapi-backend-structure
-description: Establishes a fixed FastAPI backend project structure with uv-based Python and dependency management, an `app/factory.py` create_app pattern, `.env`-driven settings, PostgreSQL via SQLAlchemy with explicit transaction boundaries, centralized route registration without `@router` decorators, a unified `ApiResponse` envelope for success and errors, global exception handlers, single-source logging with request-ID middleware, separate health/readiness endpoints, opinionated pytest conventions, and a security baseline. Use this skill whenever the user is creating, refactoring, reviewing, or extending a FastAPI + PostgreSQL backend, or mentions any of `app factory`, `create_app`, "工厂模式", "统一路由管理", "统一返回", "统一异常处理", "统一日志", "健康检查", "测试规范", "安全基线", "不要装饰器", "固定代码结构", `uv`, `pyproject.toml`, `uv.lock`, Alembic, or "route registry". Always invoke this skill before generating any FastAPI scaffolding so the project comes out conforming to the same fixed structure.
+name: fastapi-backend-skill
+description: Establishes a fixed FastAPI backend project structure with uv, `app/factory.py` create_app + lifespan, `.env`-driven settings, PostgreSQL via SQLAlchemy with explicit transactions, centralized route registration without `@router` decorators, unified `ApiResponse` envelope, global exception handlers, single-source logging with ASGI request-ID middleware, separate health/readiness endpoints, pytest conventions, and a security baseline. Use whenever creating, refactoring, reviewing, or extending a FastAPI + PostgreSQL backend, or mentioning `create_app`, "工厂模式", "统一路由管理", "统一返回", "统一异常处理", "统一日志", "不要装饰器", "固定代码结构", `uv`, Alembic, or "route registry" in a FastAPI context. Always invoke before generating FastAPI scaffolding so the project conforms to this structure.
 ---
 
 # FastAPI Backend Structure
@@ -68,6 +68,7 @@ For new projects, converge on this layout:
 - `app/core/security.py` (password hashing and JWT helpers; no FastAPI imports — present when authentication is)
 - `app/core/logging.py`
 - `app/core/responses.py`
+- `app/core/time.py` (`UTC_PLUS_8`, `now_cn`, `to_cn_time` — shared UTC+8 clock helpers)
 - `app/db/base.py`
 - `app/db/session.py`
 - `app/middleware/request_context.py`
@@ -135,8 +136,9 @@ Use these boundaries consistently:
 - `repository.py`: not part of the contract; only by explicit project choice, and then no `commit()` and no FastAPI imports
 - `app/core/responses.py`: shared `ApiResponse`, `ok(...)`, `error(...)` helpers
 - `app/core/exceptions.py`: shared application exceptions
-- `app/core/exception_handlers.py`: exception-to-response handlers (use `error(...)` from responses)
+- `app/core/exception_handlers.py`: exception-to-response handlers (`AppError`, `RequestValidationError`, `StarletteHTTPException`, and fallback `Exception`, all via `error(...)`)
 - `app/core/logging.py`: logging setup and logger access
+- `app/core/time.py`: shared UTC+8 helpers (`UTC_PLUS_8`, `now_cn`, `to_cn_time`)
 - `app/middleware/request_context.py`: pure ASGI request ID propagation
 
 Endpoint functions should stay thin. They should handle HTTP-level dependency wiring and call services. Services should not know about route registration. Repositories should not import FastAPI objects.
@@ -163,13 +165,15 @@ These keep slipping into FastAPI projects. Catch them in review before they ship
 
 - **Module-level `engine = create_async_engine(...)`.** Tests passing a different `Settings` to `create_app` will silently use the production database. Build the engine inside `lifespan`.
 - **`BaseHTTPMiddleware` for request-context work.** It buffers responses and changes exception timing. Use a pure ASGI class that mutates `scope["state"]` and the response headers.
-- **Hand-rolled error JSON in exception handlers.** Drifts from `ApiResponse` over time. Always go through the `error(...)` helper.
+- **Hand-rolled error JSON or missing `StarletteHTTPException` handler.** Hand-rolled dicts drift from `ApiResponse`, and without a `StarletteHTTPException` handler, 404/405 responses and FastAPI's `OAuth2PasswordBearer` 401 bypass the envelope and return `{"detail": "..."}`. Always route every error handler through `error(...)`.
+- **Reading `get_settings()` inside `security.py` or feature code.** Bypasses `create_app(test_settings)` isolation. Pass settings (or explicit `secret_key`) from `request.app.state.settings`.
 - **`print(...)` in feature modules.** Bypasses log levels and structured logging. Use `get_logger(__name__)`.
-- **`HTTPException` raised inside services.** Couples services to FastAPI and skips the unified envelope. Raise `AppError` and let the global handler format the response.
+- **`HTTPException` raised inside services.** Couples services to FastAPI and skips typed domain codes. Raise `AppError` and let the global handler format the response.
 - **Blocking calls inside `async def` endpoints.** Freezes the event loop and tanks every concurrent request. Use `def` endpoints (run in a threadpool) for blocking libraries, or async libraries throughout.
 - **`...` ellipsis defaults and `RootModel`.** Required fields need no `...`; validated collections are `Annotated[list[T], Field(...)]` type annotations (FastAPI builds a `TypeAdapter`), not wrapper models. Official FastAPI skill convention.
 - **Select-then-insert uniqueness checks.** Race-prone (TOCTOU): two requests can both pass the pre-check. Enforce a unique DB index and translate `IntegrityError` into an `AppError`; keep pre-checks only for friendly early errors.
 - **Symmetry layers for thin CRUD domains.** Creating `service.py`/`repository.py` per domain regardless of logic thickness. Add layers for reuse or transaction orchestration, not symmetry.
+- **`httpx.AsyncClient(transport=ASGITransport(app=app))` without entering `lifespan`.** `ASGITransport` does not invoke ASGI `lifespan`, so `app.state.sessionmaker` stays unset in integration tests unless wrapped in `app.router.lifespan_context(app)` or overridden via `app.dependency_overrides`.
 - **`app.dependency_overrides` not cleared after a test.** Leaks into the next test. Wrap overrides in a fixture's `try/finally`.
 - **`os.getenv(...)` outside `app/core/config.py`.** Bypasses the typed `Settings` model and makes overrides invisible.
 - **`Base.metadata.create_all(engine)` at startup in production code.** Skips Alembic's history. Run migrations explicitly.
@@ -179,33 +183,13 @@ These keep slipping into FastAPI projects. Catch them in review before they ship
 
 ## Review Checklist
 
-Before finishing, verify:
+Before finishing, verify the items touched by your change:
 
-- No FastAPI route decorators were added.
-- Python version and dependencies are managed by uv.
-- `pyproject.toml`, `uv.lock`, and `.python-version` are present for new projects.
-- App creation goes through `create_app`.
-- `app/main.py` only exposes the ASGI app.
-- The factory uses `lifespan` to create the engine and sessionmaker; no module-level engine.
-- Runtime configuration is centralized in `app/core/config.py` and loaded from `.env` files.
-- Different environments use the same configuration keys and differ only by `.env` overlays or injected settings.
-- PostgreSQL is the configured database.
-- Database transaction ownership is explicit and tested where behavior is nontrivial.
-- New ORM models are discoverable by Alembic metadata.
-- Schema changes have Alembic migrations; startup code does not call metadata `create_all`.
-- All API routes are visible from the central API router or project equivalent.
-- Successful API responses use the shared envelope; error responses go through the shared `error(...)` helper.
-- Exception handlers are registered through a central function.
-- Logging is configured once through the shared logging module.
-- Feature modules use named loggers rather than `print`.
-- Request IDs are propagated into response headers and error envelopes via pure ASGI middleware.
-- Health and readiness endpoints are registered and have separate behavior.
-- Tests cover shared infrastructure and the module behavior touched by the change.
-- Tests use `app.dependency_overrides` rather than env mutation.
-- CORS, trusted hosts (with `allow_credentials` guard), secrets, password handling, and log redaction follow the security baseline when relevant.
-- Endpoint functions are thin and do not contain raw SQL or heavy business logic.
-- Domain granularity matches complexity: thin CRUD domains stay single-file, and no `repository.py` layers are built for symmetry.
-- Tests or runnable verification steps cover the changed route paths and shared infrastructure.
+- [ ] **Assembly & config**: `app/main.py` only exposes `app = create_app()`; engine/sessionmaker live in `lifespan`; `.env` + `Settings` centralize config with `pyproject.toml`/`uv.lock`/`.python-version` managed by `uv`.
+- [ ] **Routing & domains**: zero `@router.*`/`@app.*` decorators (verified by static test); routes visible from `app/api/router.py`; thin CRUD stays single-file; ORM models live in `app/models/` and are re-exported for Alembic.
+- [ ] **Envelope & errors**: success uses `ok(...)`; all error handlers (`AppError`, `RequestValidationError`, `StarletteHTTPException`, `Exception`) use `error(...)`.
+- [ ] **Observability & probes**: single logging module (`get_logger`, no `print`); pure ASGI `RequestContextMiddleware` sets header + envelope `request_id`; `/health` skips DB while `/ready` checks PostgreSQL.
+- [ ] **Security & tests**: CORS `allow_credentials` guard, no secrets in code/logs, explicit `secret_key` passed into JWT helpers; tests use `create_app(test_settings)` + `app.dependency_overrides` (and `lifespan_context` when hitting real DB).
 
 ## Final Response
 

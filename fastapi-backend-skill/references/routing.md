@@ -101,8 +101,8 @@ routes = [
 from fastapi import APIRouter
 
 from app.api.route_registry import register_routes
-from app.api.v1.health import routes as health_routes
-from app.api.v1.users import routes as user_routes
+from app.api.v1.health import routes as health_routes         # single-file domain
+from app.api.v1.users.routes import routes as user_routes     # domain package
 
 
 api_router = APIRouter(prefix="/api/v1")

@@ -57,10 +57,15 @@ A. 等边三角形　　B. 正方形　　C. 等腰梯形　　D. 圆
 ### 配图尺寸与导出约定
 - **尺寸**：宽度推荐 `280px ～ 400px`（约占正文宽度 40% ～ 55%），**高度由图形真实几何比例与图注自然决定，不设死高度上限**；四周留白约 10% ～ 15%。
 - **格式选择**：
-  - Markdown 预览 / HTML 打印：优先直接引用 `.svg`（无损清晰、体积小）。
-  - 需导入 Word、微信或不支持 SVG 的编辑器：用 [render_geometry.py](../scripts/render_geometry.py) 转为 2x 高清 `.png`：
+  - Markdown 预览 / HTML 打印：优先直接引用 `.svg`（无损清晰、体积小），并可用 `--check-only` 先做质量校验（检查白底、纯黑白、宽度与文本越界）。
+  - 需导入 Word、微信或不支持 SVG 的编辑器：用 [render_geometry.py](../scripts/render_geometry.py) 转为 2x 高清 `.png`（命令中的 `<skill-dir>` 替换为本技能目录路径）：
     ```bash
-    python3 scripts/render_geometry.py q10.svg q10.png --scale 2
+    # 仅校验 SVG 规范性
+    python3 <skill-dir>/scripts/render_geometry.py --check-only q10.svg q12.svg
+    # 单图转高清 PNG
+    python3 <skill-dir>/scripts/render_geometry.py q10.svg q10.png --scale 2
+    # 多图批量转高清 PNG
+    python3 <skill-dir>/scripts/render_geometry.py --output-dir out/ --scale 2 q10.svg q12.svg
     ```
 - **文件命名与路径**：多题落盘时优先放于输出文档同级的 `assets/`（或用户指定目录），按原题号命名（如 `q10.svg`、`q12.svg`），若重名追加 `-2`、`-3` 防覆盖。
 
@@ -92,6 +97,14 @@ A. 等边三角形　　B. 正方形　　C. 等腰梯形　　D. 圆
   .figure { margin: 10px 0 8px; text-align: center; }
   .figure svg, .figure img { max-width: 380px; height: auto; }
   .answer-space { height: 90px; } /* 仅解答题按需添加 */
+  /* 纯 CSS 上下分式：<span class="frac"><span class="num">3</span><span class="den">4</span></span> */
+  .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; line-height: 1.1; margin: 0 2px; font-size: 0.9em; }
+  .frac .num { border-bottom: 1px solid #111; padding: 0 3px 1px; }
+  .frac .den { padding: 1px 3px 0; }
+  /* 表格题印刷边框 */
+  table { border-collapse: collapse; margin: 10px 0; width: auto; min-width: 60%; font-size: 14px; }
+  th, td { border: 1px solid #222; padding: 6px 12px; text-align: center; }
+  th { background: #f5f5f5; font-weight: 600; }
   .check-list {
     margin-top: 28px; padding: 12px 16px; border: 1px dashed #999;
     font-size: 13px; color: #444; background: #fafafa;

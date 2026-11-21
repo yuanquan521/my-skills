@@ -52,7 +52,8 @@ description: >-
 - 选择题保留全部原选项字母与内容，清空勾选与划痕。
 
 ### 6. 标准印刷数学符号
-- 统一使用教科书标准符号：`+`、`-`、`×`（`\times`）、`÷`（`\div`）、`∶`、`∠`（`\angle`）、`°`（`^\circ`）、`∥`（`\parallel`）、`⊥`（`\perp`）、`△`（`\triangle`）、`≈`（`\approx`）、`≥`、`≤`、`≠`，上下分式用 `\frac{a}{b}`。
+- 统一使用教科书标准符号：`+`、`-`、`×`、`÷`、`∶`、`∠`、`°`、`∥`、`⊥`、`△`、`≈`、`≥`、`≤`、`≠`。
+- **Unicode 优先、按需 LaTeX**：普通四则运算、角度、比较与几何关系在纯 Markdown 中优先直接使用上述 Unicode 符号（避免不支持 LaTeX 的平台裸露 `\div` / `\times`）；上下分式（`\frac{a}{b}`）、方程组（`\begin{cases}...\end{cases}`）、循环小数点（`0.\dot{3}`）在支持 LaTeX 的 Markdown 中用 `$...$`，在可打印 A4 HTML 中使用纯 CSS 分式样式（见 [references/question-types-and-output.md](references/question-types-and-output.md)）。
 - 严禁输出 `div`、`times`、`angle`、`deg`、`parallel`、`approx` 等英文宏名/缩写，以及 `*`、`/`（原卷本身印制斜杠分式除外）等编程符号。完整对照表见 [references/intent-clarification.md](references/intent-clarification.md)。
 
 ---
@@ -81,7 +82,7 @@ flowchart TD
 1. 按原卷题型还原文本、选项、表格与算式（各题型细则见 [references/question-types-and-output.md](references/question-types-and-output.md)）。
 2. 结合笔迹、字体、颜色、基线位置判断图上标注归属：仅删除确认为手写/批改的痕迹，无法确认时保留并登记到待核对清单。
 3. 几何配图采用纯黑线条（`#000000`）、纯白背景（`#ffffff`）、顶点斜体衬线字体（`Times New Roman` 斜体）、居中宋体图注（如 `（第 10 题）`）。
-4. Markdown / HTML 场景优先直接使用矢量 `.svg`；需贴入 Word、微信或不支持 SVG 的工具时，调用 `python3 scripts/render_geometry.py <in.svg> <out.png> --scale 2` 导出高清 PNG。
+4. 生成 `.svg` 后可用 `python3 <skill-dir>/scripts/render_geometry.py --check-only q10.svg` 校验白底、纯黑白配色、尺寸与文本边界；Markdown / HTML 场景优先直接使用矢量 `.svg`，需贴入 Word、微信或不支持 SVG 的工具时，调用 `python3 <skill-dir>/scripts/render_geometry.py q10.svg q10.png --scale 2`（多图可用 `--output-dir out/ q10.svg q12.svg` 批量导出高清 PNG）。
 
 ### 步骤三：格式化交付
 1. **默认交付（对话预览 / `.md` 文件）**：题干 + 紧随其后的配图；若用户需要参考答案与解析，另起折叠区或放在文末附录，严禁混入空白原题。

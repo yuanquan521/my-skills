@@ -36,6 +36,8 @@ def register_routes(router: APIRouter, routes: list[RouteSpec]) -> None:
 
 ## Server-Sent Events (SSE)
 
+> **Version note:** `fastapi.sse` (`EventSourceResponse`, `ServerSentEvent`) and automatic `AsyncIterable[T]` JSON Lines streaming require FastAPI `>=0.135.0`. On older FastAPI versions that cannot be upgraded yet, use `sse-starlette` (`EventSourceResponse`) or a custom `StreamingResponse(media_type="text/event-stream")` subclass on `RouteSpec.response_class`.
+
 ```python
 # app/api/v1/events.py  (single-file domain)
 from collections.abc import AsyncIterable

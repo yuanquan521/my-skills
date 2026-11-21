@@ -1,321 +1,149 @@
 ---
 name: flask-backend-skill
-description: Generate a pure Flask backend API project in the current directory with app factory, PostgreSQL, Flask-SQLAlchemy, psycopg3, JWT, Pydantic, Loguru, optional Redis, and a standalone APScheduler process sharing Flask config and task code. Use whenever creating or refactoring a Flask + PostgreSQL backend, or when the user mentions Flask 后端, 工厂模式, Flask-SQLAlchemy, Flask-Migrate, APScheduler, 独立调度进程, or 统一返回 (code/message/data).
-allowed-tools: Read Write Edit MultiEdit Glob Grep Bash
-compatibility: Requires Python 3.12+, PostgreSQL, and uv package manager. Compatible with Claude Code and OpenCode.
+description: >-
+  Establishes a pure Flask backend API project structure in the current directory with
+  an app factory (`create_app`), `.env`-driven config layers, PostgreSQL via
+  Flask-SQLAlchemy + psycopg3 + Flask-Migrate, JWT auth, Pydantic validation,
+  Loguru logging, Gunicorn, optional Redis, and an optional standalone APScheduler
+  process sharing Flask config and task code. Use whenever creating, refactoring, or
+  extending a Flask + PostgreSQL backend, or when the user mentions Flask 后端,
+  Flask-SQLAlchemy, Flask-Migrate, APScheduler, 独立调度进程, or Flask 统一返回
+  (code/message/data).
 ---
 
 # Flask Backend API Skill
 
-## Purpose
+在当前工作目录中构建或重构纯后端 Flask API 项目，统一分层、响应结构、异常处理、日志与数据库迁移规范；当业务需要定时任务时，通过独立 APScheduler 进程与 Web 进程解耦。
 
-在当前已存在项目目录中，生成一个纯后端 Flask API 项目，并满足统一分层、统一返回格式、统一异常处理、独立调度进程、数据库驱动调度参数和任务执行审计等约束。
+> 本文件作为总控指南。仅在当前任务涉及对应模块时，按需读取 `references/` 下的实现模板，避免一次性加载全部参考文件。
 
-## When To Use
+## 按需查阅参考 (Progressive Disclosure)
 
-- 需要标准化 Flask 后端接口项目
-- 需要工厂模式 + `.env` 配置分层
-- 需要 PostgreSQL + Flask-SQLAlchemy + psycopg3
-- 需要 Flask-JWT-Extended + Pydantic + Loguru + 可选 Redis
-- 需要独立调度进程（APScheduler），与 Flask 共享配置与任务代码
-- 需要统一响应结构 `code/message/data`
+| 场景 | 参考文件 |
+| --- | --- |
+| 工厂配置分层、`.env.example` 与环境变量校验 | [references/config.md](references/config.md) |
+| Flask-Migrate (Alembic) 迁移流程与 `apscheduler_jobs` 建表迁移 | [references/migrate.md](references/migrate.md) |
+| `BaseModel` 基类模板与 UTC+8 时间默认值 (`now_cn`) | [references/models.md](references/models.md) |
+| 统一业务异常类与 Flask / Pydantic / JWT 全局异常拦截 | [references/exceptions.md](references/exceptions.md) |
+| 统一响应封装 (`success` / `fail` / `paginate`) 与 `to_cn_time` | [references/responses.md](references/responses.md) |
+| Loguru 多进程日志配置与 Flask `app.logger` 桥接 | [references/logger.md](references/logger.md) |
+| Gunicorn 生产配置模板与启动命令 | [references/gunicorn-config.md](references/gunicorn-config.md) |
+| 独立 APScheduler 进程架构、约束与 `scripts/run_scheduler.py` 模板 | [references/scheduler-architecture.md](references/scheduler-architecture.md) |
+| Flask 侧任务管理 API 端点与并发安全约定 | [references/scheduler-api.md](references/scheduler-api.md) |
 
-## Non-Goals
+## 技术栈与按需模块
 
-- 不生成前端页面
-- 不要求创建项目目录、复制模板仓库或手工搬运模板
+- **核心底座**：Python 3.12+、`uv`（`pyproject.toml` + `uv.lock` + `.python-version`）、Flask、Flask-SQLAlchemy、Flask-Migrate、python-dotenv、Pydantic、Loguru、Gunicorn。
+- **数据库**：PostgreSQL + psycopg3（包名为 `psycopg`，安装命令 `uv add "psycopg[binary]"`，连接串前缀 `postgresql+psycopg://`）。
+- **认证（按需启用）**：Flask-JWT-Extended，`identity` 仅存用户 ID，算法固定 `HS256`，生产默认开启 `JWT_COOKIE_SECURE`。
+- **缓存（按需启用）**：Redis，通过 `REDIS_ENABLED` 开关控制加载。
+- **定时调度（按需启用）**：APScheduler 独立进程（`BlockingScheduler` + `SQLAlchemyJobStore`），禁止使用 Flask-APScheduler，避免在多 Worker Web 进程中重复触发定时任务。
+- **非目标**：不生成前端页面；不要求嵌套创建新项目目录或手工搬运模板仓库。
 
-## Required Stack
+## 目标目录结构
 
-### Core
-
-- Flask
-- Flask-SQLAlchemy
-- Flask-Migrate
-- python-dotenv
-
-### Database
-
-- PostgreSQL
-- psycopg3的安装注意包名是 psycopg, uv安装为：uv add "psycopg[binary]"
-- 连接串必须为 `postgresql+psycopg://`
-
-### Auth
-
-- Flask-JWT-Extended
-- JWT `identity` 只存用户 ID
-- JWT 算法固定 `HS256`
-- `JWT_COOKIE_SECURE` 默认开启
-
-### Validation / Logging
-
-- Pydantic
-- Loguru（多进程安全能力）
-
-### Optional
-
-- Redis（按开关加载）
-
-### Scheduler
-
-- APScheduler（使用 `BlockingScheduler`）
-- SQLAlchemyJobStore（任务调度状态持久化到 PostgreSQL）
-- 禁止使用 Flask-APScheduler
-
-### Server
-
-- 生产环境使用 Gunicorn，配置文件为 `gunicorn.conf.py`
-- **强制配置约束**：必须原样使用 [Gunicorn 配置参考](references/gunicorn-config.md) 提供的配置文件模板和启动命令。
-
-## Project Layout
+基础结构按需裁剪——无定时任务时不创建 `app/scheduler/`、`app/tasks/` 与 `scripts/run_scheduler.py`；无鉴权时不强行创建 `auth` 模块：
 
 ```text
-my_flask_project/
-├── .env
-├── .env.example
+.
+├── .env / .env.example
 ├── .gitignore
-├── requirements.txt
-├── pyproject.toml
+├── .python-version
+├── pyproject.toml / uv.lock
 ├── config.py
-├── manage.py
-├── wsgi.py
-├── gunicorn.conf.py
-├── migrations/              # Flask-Migrate 生成，必须纳入 Git
-├── docs/
+├── manage.py                    # 极简开发启动入口：app = create_app(); app.run()
+├── wsgi.py                      # 生产 WSGI 入口：暴露 app 供 Gunicorn 加载
+├── gunicorn.conf.py             # 生产配置（见 references/gunicorn-config.md）
+├── migrations/                  # Flask-Migrate 生成，纳入 Git
+├── docs/                        # api.md / development.md / architecture.md
 ├── scripts/
-│   └── run_scheduler.py
-├── tests/
+│   └── run_scheduler.py         # 仅启用调度器时创建
+├── tests/                       # 初始脚手架仅预留目录；补测试时放 conftest.py 与用例
 └── app/
-    ├── __init__.py
+    ├── __init__.py              # create_app() 工厂函数
     ├── core/
-    │   ├── __init__.py
-    │   ├── models.py
-    │   ├── exceptions.py
-    │   ├── responses.py
-    │   ├── security.py
-    │   └── utils/
-    │       ├── __init__.py
-    │       └── helpers.py
+    │   ├── models.py            # BaseModel
+    │   ├── exceptions.py        # APIException 与全局错误处理器
+    │   ├── responses.py         # success / fail / paginate
+    │   ├── security.py          # 密码哈希等安全辅助（按需）
+    │   └── utils/helpers.py     # to_cn_time 等公共工具
     ├── extensions/
-    │   ├── __init__.py
-    │   ├── database.py
-    │   ├── logger.py
-    │   ├── auth.py
-    │   └── server.py
-    ├── models/
-    │   ├── __init__.py
-    │   ├── user.py
-    │   ├── scheduled_task.py
-    │   └── task_execution_record.py
-    ├── schemas/
-    │   ├── __init__.py
-    │   ├── base.py
-    │   └── user.py
-    ├── scheduler/
-    │   ├── __init__.py
-    │   ├── manager.py
-    │   ├── loader.py
-    │   └── runner.py
-    ├── tasks/
-    │   ├── __init__.py
-    │   ├── registry.py
-    │   └── jobs/
-    │       ├── __init__.py
-    │       └── ...
+    │   ├── database.py          # db、migrate 实例
+    │   ├── logger.py            # Loguru 拦截与桥接
+    │   └── auth.py              # JWTManager（按需）
+    ├── models/                  # ORM 模型，按业务分文件并经 __init__.py 导出
+    ├── schemas/                 # Pydantic 校验模型
+    ├── services/                # 业务逻辑与事务提交边界（复杂业务时拆分）
+    ├── scheduler/               # 仅启用调度器时创建（manager / loader / runner）
+    ├── tasks/                   # 仅启用调度器时创建（Web 与调度进程共享任务）
     └── api/
-        ├── __init__.py
-        ├── auth.py
-        ├── users.py
-        └── tasks.py
+        ├── __init__.py          # register_blueprints(app) 集中注册蓝图
+        └── <domain>.py          # 按业务拆分的 Blueprint 模块
 ```
 
-## Core Constraints
+## 核心架构约束
 
-### Factory Pattern
+### 1. 应用工厂与配置分层
+- `app/__init__.py` 暴露 `create_app(env: str | None = None)`，从根目录 `.env` + 环境变量动态加载 `DevelopmentConfig` / `TestingConfig` / `ProductionConfig`（不要在模块 import 时固化环境变量，否则测试切换 `FLASK_ENV` / `TEST_DATABASE_URL` 会失效，详见 [references/config.md](references/config.md)）。
+- 生产环境必须校验非占位 `SECRET_KEY` 与 `JWT_SECRET_KEY`；测试环境必须显式配置与开发库隔离的 `TEST_DATABASE_URL`。
+- 始终提供 `.env.example`，禁止在代码中硬编码密钥。
 
-- `app/__init__.py` 必须提供 `create_app()`
-- 必须根据根目录 `.env` + 环境变量加载 `DevelopmentConfig` / `TestingConfig` / `ProductionConfig`
-- 扩展初始化必须集中管理
-- **强制配置分层约束**：必须严格基于 [配置管理参考](references/config.md) 中的模板代码来实现配置类和环境变量的管理。
+### 2. 数据库、迁移与时间链路
+- 所有 Schema 变更通过 Flask-Migrate（`flask db migrate -m "..."` → 人工审查 → `flask db upgrade`）管理，禁止使用 `db.create_all()`，确保变更历史可追溯、可回滚（详见 [references/migrate.md](references/migrate.md)）。
+- `db` 与 `migrate` 在 `app/extensions/database.py` 声明并在 `create_app()` 中集中初始化。
+- 业务模型继承 [references/models.md](references/models.md) 的 `BaseModel`，采用 SQLAlchemy 2.0 现代注解（`Mapped[...] = mapped_column(...)`）。
+- 物理列均添加 `comment="..."` 便于数据库运维排查，但 `relationship()` 上**绝不**传 `comment`（SQLAlchemy 会报参数错误）。
+- 本规范统一约定查询写法为 `db.session.query(Model).filter_by(...)`，避免使用已弃用的 `Model.query` 属性，同时保持团队内检索写法一致。
+- 多步写操作应在 Service 层统一控制 `db.session.commit()` / `rollback()`，避免在视图函数或模型便捷方法中零散提交而破坏事务原子性。
+- **全链路 UTC+8（`Asia/Shanghai`）**：数据库使用 naive `DateTime` 列存储 UTC+8 本地时间（`BaseModel` 默认 `now_cn`）；接口需返回可直接展示的时间时，使用 `to_cn_time(...)` 格式化为 `YYYY-MM-DD HH:MM:SS`（如 `2026-11-09 14:30:00`），不混用 `DateTime(timezone=True)`、裸 ISO 字符串或时间戳。
 
-### Config Management
+### 3. 统一响应与全局异常处理
+- 所有接口响应顶层始终包含 `code`（`0` 成功 / `1` 失败）、`message`、`data`；具体错误语义由 HTTP 状态码承载，失败时 `data` 保留为 `null`，错误明细放在独立的 `details` 字段，不塞入 `data`。
+- 视图层一律调用 [references/responses.md](references/responses.md) 的 `success()` / `fail()` / `paginate()`，业务错误统一抛出 `APIException` 或其子类，由 [references/exceptions.md](references/exceptions.md) 中的 `register_error_handlers(app)` 和 `register_jwt_error_handlers(jwt)` 统一收口（含 Pydantic `ValidationError`、Werkzeug `HTTPException` 与 JWT 认证错误）。
 
-- 必须生成 `.env.example`
-- 必须覆盖数据库、JWT、Redis、日志、调度相关配置项
-- 生产与开发配置分离
-- 密钥禁止硬编码
+### 4. 日志与生产部署
+- 采用 [references/logger.md](references/logger.md) 中的 Loguru 拦截桥接方案（`enqueue=True` 保证多进程写安全），遵循 `app.config["LOG_LEVEL"]` 与 `app.config["LOG_PATH"]`。
+- Web 进程写入 `web.log`，独立调度进程写入 `scheduler.log`，避免混写导致排障困难。
+- 生产环境使用 Gunicorn 与 [references/gunicorn-config.md](references/gunicorn-config.md) 的配置模板（`gunicorn "wsgi:app" -c gunicorn.conf.py`）。
 
-### Database
+### 5. 路由、入口与代码质量
+- 使用原生 `Blueprint` 按业务拆分路由，通过 `app/api/__init__.py` 的 `register_blueprints(app)` 集中注册；蓝图模块顶层不执行数据库查询或网络请求等副作用。
+- `wsgi.py` 仅调用 `create_app()` 暴露 `app`；`manage.py` 保持极简，仅实例化 `app` 并 `app.run()`，不引入自定义 Click 子命令（迁移继续走原生 `flask db`）。
+- 单函数控制在 100 行以内、单文件控制在 600 行以内，超出时及时拆分私有方法或子模块。
 
-- **强制使用 Flask-Migrate**（Alembic）管理所有数据库 Schema 变更，禁止使用 `db.create_all()`
-- `migrate` 实例必须在 `app/extensions/database.py` 中与 `db` 一同声明，并在工厂函数中调用 `migrate.init_app(app, db)`
-- 每次模型变更后必须执行 `flask db migrate -m "描述"` 生成迁移脚本，并人工审查后再执行 `flask db upgrade`
-- `migrations/` 目录必须纳入版本控制
-- **强制迁移规约**：必须严格遵守 [数据库迁移参考](references/migrate.md) 中说明的初始化方式和约束规则。
-- 生产连接池配置必须独立
-- **强制模型基类约束**：必须严格拷贝并继承 [模型基类参考](references/models.md) 中提供的 `BaseModel` 模板。
-- **强制模型注解约束**：必须使用 SQLAlchemy 2.0 现代写法（类似 `Mapped[str] = mapped_column(...)`）做类型注解。
-- **强制模型注释约束**：所有物理表字段映射中，必须使用 `comment="说明"` 添加注释；但在外键或关联（`relationship()`）声明中**绝对禁止**使用 `comment`。
-- **强制查询语法约束**：查询结构时，强制使用 `db.session.query(Model).filter_by(...)` 的语法进行查询。
+### 6. 独立调度进程（仅项目需要定时任务时）
+- 使用 `BlockingScheduler` + `SQLAlchemyJobStore`（持久化到 PostgreSQL `apscheduler_jobs` 表，包含 `next_run_time` 索引，通过手工迁移创建，见 [references/migrate.md](references/migrate.md)）。
+- 绝不在 Flask Web 进程内启动调度器；Web 与 `scripts/run_scheduler.py` 共享同一份 `.env`、`config.py` 和 `app/tasks/` 任务代码。
+- 调度开关、频率参数由数据库驱动，每次执行结果（状态、耗时、错误摘要）落库审计并保留近 1 个月。详见 [references/scheduler-architecture.md](references/scheduler-architecture.md) 与 [references/scheduler-api.md](references/scheduler-api.md)。
 
-### Logging
+## 环境管理与文档约定
 
-- Web 日志与调度器日志必须分离
-- 调度器必须写入独立日志文件（例如 `logs/scheduler.log`）
-- **强制日志配置约束**：必须严格拷贝并使用 [日志模块模板](references/logger.md) 中的 Loguru 拦截与 Flask `app.logger` 桥接机制代码。
-
-### Code Quality
-
-- 单个函数代码行数强制不得超过 100 行（提倡提前 Return 和抽离私有方法）
-- 单个源文件代码行数强制不得超过 600 行（遇超长文件需即刻进行模块/蓝图的原子拆分）
-
-## Unified Response And Exception Rules
-
-### Required Response Shape
-
-所有接口返回体顶层必须始终包含：
-
-- `code`：业务码，`0` 表示成功，`1` 表示失败
-- `message`：提示信息
-- `data`：业务数据
-
-约束：
-
-- 成功和失败响应都不能缺失以上字段
-- 错误语义由 HTTP 状态码承载（如 `400` / `401` / `404` / `500` 等），`code` 仅区分成功与失败
-- 失败响应中 `data` 必须保留且建议为 `null`
-- 错误详情对象不能放在 `data` 中
-- 错误详情需放独立字段（如 `details` / `errors`）
-- 时间约定全链路统一 UTC+8（`Asia/Shanghai`）：数据库存储 UTC+8 本地时间（naive `DateTime` 列，基类默认值 `now_cn`，见 [模型基类参考](references/models.md)）；接口特别要求返回可直接展示的时间时，时间字段直接格式化为 `YYYY-MM-DD HH:MM:SS`（如 `2026-11-09 14:30:00`），禁止裸 ISO 字符串或时间戳（工具函数见 [响应封装模板](references/responses.md)）
-
-### Response / Exception Management
-
-- **强制响应格式约束**：必须严格按照 [响应封装模板](references/responses.md) 中的代码作为 `app/core/responses.py`。
-- **强制异常处理约束**：业务抛错与全局异常捕获**必须严格原样使用** [异常处理模板](references/exceptions.md) 中的全部代码作为 `app/core/exceptions.py`。工厂函数必须调用 `register_error_handlers(app)`，并在 `JWTManager` 初始化后调用 `register_jwt_error_handlers(jwt)`，确保 Pydantic 与 JWT 错误也使用统一响应。
-- 统一 HTTP 状态码与业务错误码映射。遇到业务错误，**一律通过** `raise APIException(...)` 或其子类来中止请求并抛出，交给全局拦截器处理。
-- 视图层禁止手写零散拼装的返回结构。
-
-## Scheduler Architecture (Rewritten)
-
-### Absolute Rules
-
-- 使用 APScheduler，不使用 Flask-APScheduler
-- 使用 `BlockingScheduler` 作为独立调度进程
-- 禁止在 Flask Web App 进程内启动调度器
-- Flask 与调度器必须共享同一套配置来源（同一个 `.env` 与 `config.py`）
-
-### Shared Code Model
-
-- `app/tasks/` 是 Flask 与调度进程共享的公共任务仓库
-- Flask API 可以手动触发 `app/tasks/` 中任务
-- 独立调度进程按计划定时触发同一批任务
-
-Detailed constraints on scheduler management, DB-driven parameters, execution records, and signal handling: see [scheduler architecture details](references/scheduler-architecture.md).
-
-## Scheduler API Requirements (Flask Side)
-
-Flask 侧必须提供任务管理 API（需鉴权），包括：手动触发、状态查询、配置修改、历史记录查询。
-
-详细的端点设计、安全要求和注意事项见 [调度器 API 接口规范](references/scheduler-api.md)。
-
-## Routing Rules
-
-- 必须使用 Flask 原生的 `Blueprint` 划分模块
-- 根据业务拆分不同的 Blueprint，使用函数视图直接绑定路由
-- 所有 Blueprint 必须通过函数集中注册到 `app` 对象（在 `app/api/__init__.py` 中统一管理，比如对外暴露 `register_blueprints`）
-- `auth` / `users` / `tasks` 业务模块的路由必须解耦独立
-
-## Documentation Rules
-
-### docs/api.md 必须说明
-
-- 统一返回结构与错误结构
-- 统一状态码/错误码
-- 手动任务触发、状态查询、历史查询、配置修改接口
-- 调度参数来自数据库的约束
-- SQLAlchemyJobStore 持久化调度状态（不含 `next_run_time`）
-- 写接口幂等与并发触发保护策略
-
-### docs/development.md 必须说明
-
-- 使用 `uv` 初始化环境与安装依赖
-- 如何启动 Web 服务
-- 如何单独启动调度进程
-- 调度日志与执行记录查看方式
-
-### docs/architecture.md 必须说明
-
-- Web 进程与调度进程解耦架构,在scripts/run_scheduler.py中启动和停止调度服务
-- 共享 `app/tasks/` 的代码组织方式
-- 调度配置与执行记录的数据库模型关系
-
-## Entry Points
-
-- `wsgi.py`：生产入口，仅负责调用 `create_app()` 并暴露 `app` 对象供 Gunicorn 加载（`gunicorn "wsgi:app"`）
-- `manage.py`：开发启动脚本。要求代码极致简单，实例化 app 后直接调用 `app.run()` 启动服务器即可，**不需要依赖任何 CLI 命令行参数**。不要使用 Click 或 Flask CLI 定义复杂的启动子命令。数据库迁移等仍使用项目内原生 `flask db` 命令即可。
-
-## Environment Setup
-
-默认前提：用户已创建并进入目标项目目录。
-
-只保留环境与依赖步骤：
+使用 `uv` 作为唯一依赖与环境入口（仅在旧项目明确要求兼容时才保留 `requirements.txt`）：
 
 ```bash
-uv python install 3.12
-uv venv --python 3.12
+uv python pin 3.12
 uv sync
 ```
 
-如使用 `requirements.txt`：
+项目文档按需维护在 `docs/`：
+- `docs/api.md`：统一响应/错误格式、状态码约定；（启用调度器时）补充任务管理端点、数据库驱动参数与并发/幂等保护策略。
+- `docs/development.md`：`uv` 初始化、`flask db` 迁移、Web 服务启动及（如有）独立调度进程与日志排查方式。
+- `docs/architecture.md`：分层说明及（如有）Web 与 `scripts/run_scheduler.py` 解耦架构、共享 `app/tasks/` 组织方式。
 
-```bash
-uv pip install -r requirements.txt
-```
+## 测试规范
 
-## Testing Rules
+> 初始生成脚手架时仅预留 `tests/` 目录结构；当用户要求编写测试或核心业务稳定后，按以下约束实现。
 
-> 初始生成项目脚手架时**不编写测试代码**，仅预留 `tests/` 目录结构。待核心业务逻辑稳定后再补充测试。
+- 使用 `pytest` + Flask `test_client`，在 `tests/conftest.py` 提供共享 fixtures（`app`、`client`、`db_session`）。
+- 测试库必须通过 `TEST_DATABASE_URL` 与开发/生产库物理隔离，并在 session fixture 中调用 `flask_migrate.upgrade()` 同步表结构（见 [references/migrate.md](references/migrate.md)）。
+- 每个用例独立可重入，测试结束后回滚事务或清理数据，同时校验 HTTP 状态码与返回体 `code`（`0`/`1`）。
 
-### 目录结构
+## 交付自检清单 (Review Checklist)
 
-```text
-tests/
-├── conftest.py          # pytest fixtures（app 实例、测试客户端、数据库会话等）
-├── test_auth.py
-├── test_users.py
-└── test_tasks.py
-```
-
-### 约束
-
-- 测试框架使用 `pytest`
-- 必须通过 `conftest.py` 提供共享 fixtures（`app`、`client`、`db_session`）
-- 测试数据库必须与开发/生产数据库隔离（推荐使用独立的 `_test` 后缀数据库）
-- 每个测试用例必须具备独立性，不依赖其他用例的执行顺序或副作用
-- API 测试使用 Flask 自带的 `test_client`，验证 HTTP 状态码与返回体中的 `code`（`0`/`1`）
-- 涉及数据库的测试必须在测试结束后回滚或清理数据
-
-## Anti-Patterns
-
-- 不要在 Web App 内调用调度器启动
-- 不要把调度频率和任务参数硬编码在代码里
-- 不要把任务成功/失败只写日志不落库
-- 不要把 Web 与调度器混为同一进程职责
-- 不要把错误详情放进 `data`
-- 不要在视图函数中直接操作 `db.session.commit()`（应封装到 Service 层或 Model 方法中）
-- 不要在蓝图模块文件顶层执行有副作用的代码（如数据库查询、网络请求）
-- 不要使用老旧的 `Model.query` 查询方式，强制使用 `db.session.query(Model).filter_by(...)` 的规范写法
-
-## References Index
-
-| 文件 | 说明 |
-|------|------|
-| [config.md](references/config.md) | 配置分层模板与 `.env.example` |
-| [migrate.md](references/migrate.md) | Flask-Migrate 数据库迁移强制规范与命令用法 |
-| [models.md](references/models.md) | 数据库 BaseModel 基类模板 |
-| [exceptions.md](references/exceptions.md) | 统一异常类与全局错误捕获 |
-| [responses.md](references/responses.md) | 统一响应封装（success/fail/paginate） |
-| [logger.md](references/logger.md) | Loguru 日志配置与 Flask 桥接 |
-| [gunicorn-config.md](references/gunicorn-config.md) | Gunicorn 生产配置文件模板 |
-| [scheduler-architecture.md](references/scheduler-architecture.md) | 调度器架构详细约束 |
-| [scheduler-api.md](references/scheduler-api.md) | 调度器 API 接口规范 |
+- [ ] `app/__init__.py` 提供 `create_app()`，配置动态加载 `.env`，生产/测试环境均经过 `validate()` 校验，无硬编码密钥。
+- [ ] 使用 `uv`（`pyproject.toml` / `uv.lock` / `.python-version`）与 `postgresql+psycopg://`；所有建表走 Flask-Migrate，无 `db.create_all()`。
+- [ ] 模型继承 `BaseModel`、采用 SQLAlchemy 2.0 `Mapped[...]`、物理列有 `comment` 且 `relationship()` 无 `comment`、时间全链路 UTC+8。
+- [ ] 查询统一使用 `db.session.query(...)`（无 `Model.query`）；视图层不手写散装 JSON，也不在视图中裸写多步 `commit()`。
+- [ ] 全局异常处理器覆盖 `APIException`、`ValidationError`、`HTTPException`、`Exception` 及（如有）JWT 错误，统一返回 `code/message/data`。
+- [ ] Loguru 日志尊重 `LOG_LEVEL` / `LOG_PATH`，Web 与调度日志分离。
+- [ ] 若启用调度器：仅由 `scripts/run_scheduler.py` 启动 `BlockingScheduler`，`apscheduler_jobs` 有对应迁移脚本，任务执行记录落库。

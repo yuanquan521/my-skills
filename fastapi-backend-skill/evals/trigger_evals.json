@@ -1,0 +1,82 @@
+[
+  {
+    "query": "帮我在当前空目录用 uv 初始化一个 FastAPI + PostgreSQL 后端项目，需要工厂模式、统一返回格式和集中路由注册，不要写 @router.get 装饰器",
+    "should_trigger": true
+  },
+  {
+    "query": "Our existing FastAPI service has routes scattered across @router.post decorators and creates the SQLAlchemy engine at module import time. Refactor it into a create_app factory with lifespan and Alembic migrations.",
+    "should_trigger": true
+  },
+  {
+    "query": "给这个 FastAPI 项目加一个 invoices 业务模块，数据库是 PostgreSQL，简单 CRUD 就行，保持统一路由注册和 ApiResponse 返回信封",
+    "should_trigger": true
+  },
+  {
+    "query": "我们需要在 FastAPI 后端里加上 OAuth2 密码登录和 JWT 鉴权，受保护接口拿当前用户，401 也要走全局异常统一信封",
+    "should_trigger": true
+  },
+  {
+    "query": "FastAPI 项目的 /health 接口现在会查数据库，数据库抖动时 K8s 直接重启了 Pod，帮我拆成 /health 和 /ready 并补上 pytest 测试",
+    "should_trigger": true
+  },
+  {
+    "query": "Add an SSE progress stream endpoint to our FastAPI backend while keeping centralized route registration and request-id middleware.",
+    "should_trigger": true
+  },
+  {
+    "query": "Review our FastAPI backend PR against our fixed project structure: check lifespan engine creation, transaction boundaries, CORS allow_credentials guard, and no route decorators.",
+    "should_trigger": true
+  },
+  {
+    "query": "把项目里的 requirements.txt 迁移到 uv + pyproject.toml + uv.lock，顺便整理一下 FastAPI 的 .env 多环境配置和统一日志模块",
+    "should_trigger": true
+  },
+  {
+    "query": "新开一个 Python 异步 Web API 服务，技术栈选 FastAPI + asyncpg + SQLAlchemy 2.0 + PostgreSQL，按固定代码结构搭骨架",
+    "should_trigger": true
+  },
+  {
+    "query": "FastAPI 接口返回时间目前是带时区的 ISO 字符串，想改成全链路 UTC+8 且对外返回 YYYY-MM-DD HH:MM:SS，同时保持统一返回结构",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我在当前目录搭一个 Flask + PostgreSQL + Flask-SQLAlchemy 后端，需要工厂模式、独立 APScheduler 定时调度进程和 code/message/data 统一返回",
+    "should_trigger": false
+  },
+  {
+    "query": "写一个独立的 Python 爬虫脚本抓这个网页并把内容总结成一个本地 HTML 文件保存在当前目录",
+    "should_trigger": false
+  },
+  {
+    "query": "Explain the difference between FastAPI Depends and Starlette middleware in 3 bullet points.",
+    "should_trigger": false
+  },
+  {
+    "query": "用 Django REST Framework 和 PostgreSQL 建一个带 Admin 后台的电商订单系统",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我写一条 PostgreSQL SQL 查询语句，按月统计 orders 表的成交金额和退单率",
+    "should_trigger": false
+  },
+  {
+    "query": "How do I configure nginx reverse proxy timeouts and gzip compression in front of a Python backend?",
+    "should_trigger": false
+  },
+  {
+    "query": "用 Express + TypeScript + Prisma 搭一个带 JWT 登录和健康检查的后端服务",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把这张数学试卷照片里的红笔批改去掉，还原成空白原题和几何 SVG 图",
+    "should_trigger": false
+  },
+  {
+    "query": "在现有 React + Vite 前端项目里封装一个 axios 请求拦截器，统一处理 401 跳转登录页",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我给本地运行的 Docker Compose PostgreSQL 容器做一次 pg_dump 备份并恢复到测试库",
+    "should_trigger": false
+  }
+]

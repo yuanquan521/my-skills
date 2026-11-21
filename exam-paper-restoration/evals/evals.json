@@ -1,0 +1,40 @@
+{
+  "skill_name": "exam-paper-restoration",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我重新整理下面这道拍下来的错题，去掉干扰因素：\n[照片文字识别草稿：红笔圈了题号3，题目写着「3.【新情境】【生活百科】我国交通标志尺寸执行国家标准，如三角形标志边长常见的有70厘米、90厘米和110厘米。如果要制作50块边长为90厘米的三角形交通标志，每块高约78厘米，制作这些交通标志一共约需要（ 3510 [红叉] ）平方分米的铁皮。」旁边还有铅笔草稿 78*90=7020、7020*50=351000。]",
+      "expected_output": "100% 一字不改地保留【新情境】【生活百科】、背景句子、冗余边长 70/110 厘米与中文单位“平方分米”；彻底清除手写答案 3510、红叉、红圈与铅笔竖式草稿；填空处还原为纯文本全角空格（　　　　）；不混入解题答案。",
+      "files": [],
+      "expectations": [
+        "Retains 【新情境】【生活百科】, background story, and non-used numbers (70厘米, 110厘米) verbatim without summarizing.",
+        "Preserves Chinese unit names ('厘米', '平方分米') without converting them to 'cm' or 'dm²'.",
+        "Removes handwritten answer '3510', red cross, and pencil calculations ('78*90=7020', '7020*50=351000').",
+        "Leaves the blank empty using full-width spaces '（　　　　）' and does not mix the answer into the blank question."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "帮我把下面两道题做成可打印的 A4 错题卷 HTML（含几何配图，参考答案放到打印分页后的文末）：\n10. 如图，AB = 10 分米，CD = 4 分米，∠A = 45°，∠B 和 ∠D 都是直角。那么四边形 ABCD 的面积是（ 42 [红叉] ）平方分米。（图上铅笔手写了 10 和 4，还画了一条延长辅助虚线）\n11. 脱式计算：360 ÷ (18 × 2) + 3/4（原卷 3/4 为上下分式，360 旁边有一处被涂改液完全盖住看不清的加数）。",
+      "expected_output": "生成单个自包含可打印 A4 HTML 文件（含 @page、.question break-inside: avoid、.frac 上下分式样式与 .answers break-before: page）；第 10 题内联纯黑白白底 SVG（严格满足 AB=10, CD=4, ∠A=45°, ∠B=∠D=90°，清除铅笔数字与辅助虚线）并经 render_geometry.py --check-only 校验通过；第 11 题使用标准印刷符号 ÷ × 与 .frac 上下分式，涂改液遮挡处显式标记 [待核对：此处被涂改遮挡] 且在末尾列出待人工核对清单。",
+      "files": [],
+      "expectations": [
+        "Outputs a single self-contained printable A4 HTML file with inline CSS, no external CDN/font requests, and .answers on a separate printed page.",
+        "Question 10 includes a monochrome white-background SVG geometrically matching ∠A=45°, ∠B=∠D=90°, and AB:CD=10:4, with zero handwritten numbers or auxiliary lines.",
+        "Question 11 uses standard symbols (÷, ×) and pure CSS .frac stacked fraction with no 'div', 'times', or '*' leaks.",
+        "The occluded portion is explicitly marked with '[待核对：...]' in place and summarized in a review checklist at the end rather than silently guessed."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "把这张带批改的四则运算题整理成干净的 Markdown 文本，方便直接发微信群里给孩子重做：\n5. 脱式计算，能简算的要简算：\n(1) 360 / (18 * 2) + 45 = 50 [红叉]\n(2) 4.8 * 10.1 - 4.8 / 10 = 48 [红叉]",
+      "expected_output": "输出干净空白的 Markdown，彻底去除学生错误计算结果与红叉；普通运算符号直接使用 Unicode 标准符号（×、÷、+、-），不输出 *、/、div、times，也不强行套用微信无法渲染的 LaTeX 宏（如 \\div、\\times）。",
+      "files": [],
+      "expectations": [
+        "Uses Unicode standard arithmetic symbols ('×', '÷', '+', '-') directly so it renders cleanly in WeChat/plain Markdown without raw '\\div' or '\\times'.",
+        "Contains zero programming operators ('*', '/') or English operator abbreviations ('div', 'times').",
+        "Removes handwritten answers ('= 50', '= 48') and grading marks while preserving the exact prompt instruction and sub-question numbers (1), (2)."
+      ]
+    }
+  ]
+}

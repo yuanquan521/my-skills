@@ -47,14 +47,26 @@ def app(test_settings):
 
 @pytest.fixture
 async def client(app):
+    """Lightweight client without entering lifespan (use for non-DB tests or with get_db override)."""
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
     ) as client:
         yield client
+
+
+@pytest.fixture
+async def live_client(app):
+    """Integration client that runs FastAPI lifespan (initializes app.state.engine/sessionmaker)."""
+    async with app.router.lifespan_context(app):
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+        ) as client:
+            yield client
 ```
 
-The default `database_url` works locally but must be overridable from CI — read from `TEST_DATABASE_URL` so the same `Settings(...)` call works in both environments.
+`httpx.ASGITransport` does not run ASGI `lifespan` on its own. Keeping `client` (no lifespan) fast for unit/mocked-DB tests and `live_client` (`app.router.lifespan_context(app)`) for real-PostgreSQL integration tests avoids `AttributeError: 'State' object has no attribute 'sessionmaker'` without adding extra dependencies. The default `database_url` works locally but must be overridable from CI — read from `TEST_DATABASE_URL` so the same `Settings(...)` call works in both environments.
 
 ## Dependency Overrides
 
@@ -88,7 +100,7 @@ async def client_with_fake_db(app):
         app.dependency_overrides.clear()
 ```
 
-For real-database integration tests, override `get_db` with a session bound to a transactional sessionmaker, or skip the override and let the factory's `lifespan` build a real engine against a dedicated test database.
+For real-database integration tests, override `get_db` with a session bound to a transactional sessionmaker, or use the `live_client` fixture above so `lifespan` builds and disposes a real engine against the dedicated test database.
 
 ## Response and Request ID Test
 

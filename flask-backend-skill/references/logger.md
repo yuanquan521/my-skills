@@ -1,121 +1,116 @@
 # Logging Template (Loguru)
 
-针对 Flask + 多进程运行场景（如 Gunicorn / APScheduler），使用 `loguru` 统一接管所有的标准 `logging` 输出，并覆盖 Flask 内部默认的 `app.logger`。
+针对 Flask + 多进程运行场景（如 Gunicorn / APScheduler），使用 `loguru` 统一接管标准 `logging` 输出并桥接 Flask 的 `app.logger`。
 
-这样可以彻底解决多进程并发写日志的资源冲突（利用 `enqueue=True`），并让无论是业务直接抛出的日志、Werkzeug 访问日志还是调度系统自带的事件日志格式完全统一。
+通过 `enqueue=True` 保证多进程并发写日志不错乱，同时读取 `app.config["LOG_LEVEL"]` 与 `app.config["LOG_PATH"]`，确保 `.env` 配置实际生效且 Web / 调度器日志落盘分离。
 
 ## Logger 配置示例 (`app/extensions/logger.py`)
 
 ```python
 import logging
-import sys
 import os
-from loguru import logger
+import sys
 from flask import Flask
+from loguru import logger
+
 
 class InterceptHandler(logging.Handler):
-    """
-    统一接管标准 logging 日志，转发给 loguru。
-    解决 Gunicorn、Flask 等多处系统及框架本身采用不同日志器发生输出错乱的问题。
-    """
-    def emit(self, record):
-        # 尝试获取对应 loguru 的级别
+    """统一接管标准 logging 日志并转发给 loguru。"""
+
+    def emit(self, record: logging.LogRecord) -> None:
         try:
-            level = logger.level(record.levelname).name
+            level: str | int = logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
 
-        # 找到调用者所在的帧，避免日志的模块名错误显示为 InterceptHandler 内
         frame, depth = sys._getframe(6), 6
         while frame and frame.f_code.co_filename == logging.__file__:
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
 
-def configure_logging(app: Flask, is_scheduler: bool = False):
-    """
-    配置全局日志。
-    :param app: 传入 Flask 实例以读取配置并彻底接管 app.logger
-    :param is_scheduler: 用于决定分开存放日志路径
-    """
 
-    # 清除 loguru 默认的 handler
+def configure_logging(app: Flask, is_scheduler: bool = False) -> None:
+    """
+    配置全局日志并接管 app.logger。
+    :param app: Flask 实例（需先加载 config）
+    :param is_scheduler: True 写入 scheduler.log，False 写入 web.log
+    """
+    log_level = str(app.config.get("LOG_LEVEL", "INFO")).upper()
+    base_log_dir = app.config.get("LOG_PATH", "logs")
+    os.makedirs(base_log_dir, exist_ok=True)
+
     logger.remove()
 
     # 1. 控制台输出
     logger.add(
         sys.stdout,
-        enqueue=True, # 开启多进程/多线程安全队列
-        level="INFO",
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+        enqueue=True,
+        level=log_level,
+        format=(
+            "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+            "<level>{message}</level>"
+        ),
     )
 
-    # 2. 根据不同进程切分文件 (务必分离 Web 日志与 Scheduler 日志)
-    # 日志文件的目录来源于 Flask config 中的 LOG_PATH
-    base_log_dir = app.config.get("LOG_PATH", "logs")
-    log_path = os.path.join(base_log_dir, "scheduler.log") if is_scheduler else os.path.join(base_log_dir, "web.log")
-
+    # 2. 按进程分离日志文件（Web 与 Scheduler 不混写）
+    log_file = "scheduler.log" if is_scheduler else "web.log"
+    log_path = os.path.join(base_log_dir, log_file)
     logger.add(
         log_path,
-        rotation="00:00",     # 每天午夜轮转
-        retention="30 days",  # 保留30天
-        enqueue=True,         # 多进程/多线程下安全的写锁机制
-        level="INFO",
-        encoding="utf-8"
+        rotation="00:00",
+        retention="30 days",
+        enqueue=True,
+        level=log_level,
+        encoding="utf-8",
     )
 
     # 3. 将标准 logging 重定向到 loguru
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
-    # 彻底覆盖常见的系统级别日志器
-    for _log in ['werkzeug', 'gunicorn.error', 'gunicorn.access', 'apscheduler']:
+    for _log in ("werkzeug", "gunicorn.error", "gunicorn.access", "apscheduler"):
         _logger = logging.getLogger(_log)
         _logger.handlers = [InterceptHandler()]
         _logger.propagate = False
 
-    # 4. 接管 flask 的自带 app.logger
+    # 4. 接管 Flask 自带的 app.logger
     app.logger.handlers = [InterceptHandler()]
     app.logger.propagate = False
 ```
 
 ## 使用说明
 
-### 1. Web 进程入口使用
+### 1. Web 进程入口 (`app/__init__.py`)
 
-在你的 `app/__init__.py` 工厂函数中，或者 `wsgi.py` 最顶层入口处：
+在 `create_app()` 加载配置之后调用：
 
 ```python
-from app.extensions.logger import configure_logging
 from flask import Flask
+from config import load_config
+from app.extensions.logger import configure_logging
 
-def create_app():
+
+def create_app(env: str | None = None, *, is_scheduler: bool = False) -> Flask:
     app = Flask(__name__)
-
-    # 配置并彻底接管 Web 端日志
-    configure_logging(app, is_scheduler=False)
-
-    ...
+    app.config.from_mapping(load_config(env))
+    configure_logging(app, is_scheduler=is_scheduler)
+    # ... 初始化数据库、扩展、异常处理器与蓝图
     return app
 ```
 
-随后你在任意 `blueprint` 或者 `exceptions.py` 里调用 `current_app.logger.exception(...)` 或 `current_app.logger.info(...)` 时，底层其实生效的已经是带有漂亮排版以及安全入队的 Loguru 引擎了。
+在蓝图或异常处理器中调用 `current_app.logger.info(...)` / `current_app.logger.exception(...)`，都会自动走 Loguru 排版与安全入队。
 
-### 2. 独立调起的调度进程使用
+### 2. 独立调度进程 (`scripts/run_scheduler.py`)
 
-在你的独立调度进程文件如 `scripts/run_scheduler.py` 内部开头：
+传入 `is_scheduler=True`，避免调度进程先初始化一次 `web.log` 再切换：
 
 ```python
-from app.extensions.logger import configure_logging
 from app import create_app
 
-# 调度器也需要依托 Flask 应用上下文以共享配置和操作数据库
-app = create_app()
-
-# 接管独立的调度器日志
-configure_logging(app, is_scheduler=True)
-
-with app.app_context():
-    # ... 继续实例化 APScheduler 及读取配置等
-    pass
+app = create_app(is_scheduler=True)
 ```

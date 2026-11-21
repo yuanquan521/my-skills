@@ -1,44 +1,94 @@
-# 调度器架构详细约束
+# 调度器架构详细约束与参考模板
 
-## Dedicated Scheduler Management
+仅在项目需要后台定时任务时启用本模块。Web 进程与调度进程解耦，避免 Gunicorn 多 Worker 启动多份调度器造成任务重复执行。
 
-- 调度任务定义与元数据由数据库驱动
-- 必须有独立的任务管理模型与服务层（`app/scheduler/`）
-- 调度器加载器必须从数据库拉取任务配置并动态注册
-- 必须使用 SQLAlchemyJobStore，将调度状态持久化到 PostgreSQL
-- 必须明确使用独立 job store 表（默认 `apscheduler_jobs` 或等价配置）
-- `apscheduler_jobs` 必须通过 [Flask-Migrate 参考](migrate.md#apscheduler-job-store-建表迁移) 中的手工迁移创建，并在启动调度器前执行 `flask db upgrade`；该表不属于 Flask-SQLAlchemy 模型 metadata，不能依赖 autogenerate 发现
-- 调度状态至少应可追踪：任务是否启用、trigger 信息、`next_run_time`
-- 调度进程实例之间不得并发共享同一 jobstore 进行重复调度（必须保证单调度器实例）
-- 任务可调用目标必须为可导入的模块级函数，禁止使用匿名函数/闭包作为持久化任务入口
+## 核心架构约束
 
-## DB-Driven Parameters (Mandatory)
+- 调度任务定义与元数据由数据库驱动，通过 `app/scheduler/`（`manager.py` / `loader.py` / `runner.py`）统一管理。
+- 使用 `BlockingScheduler` + `SQLAlchemyJobStore`（持久化到 PostgreSQL `apscheduler_jobs` 表）。
+- `apscheduler_jobs` 不属于 Flask-SQLAlchemy 模型 metadata，必须通过 [Flask-Migrate 参考](migrate.md#apscheduler-job-store-建表迁移) 中的手工迁移创建，并在启动调度器前执行 `flask db upgrade`。
+- 调度状态至少可追踪：任务是否启用、trigger 信息、`next_run_time`（由 `apscheduler_jobs` 持久化）。
+- 保证单调度器实例运行，不并发启动多个共享同一 jobstore 的调度进程。
+- 任务可调用目标必须是可导入的模块级函数（如 `app.tasks.jobs.sync:run_sync`），禁止使用匿名函数或闭包。
 
-以下参数必须从数据库读取，禁止硬编码在调度代码中：
+## 数据库驱动参数
 
-- 任务启停状态
-- 调度类型与频率（如 interval/cron/date 的实际参数）
-- 执行间隔或 Cron 表达式
-- 任务执行所需业务参数
-- 重试策略、超时策略（如项目有定义）
-- 任务最近执行时间、下次执行时间（或可推导字段）
-- 任务配置版本号与更新时间（用于调度器重载判定）
+以下参数从数据库（`scheduled_tasks` 表）读取，不硬编码在代码中：
 
-## Execution Record (Mandatory)
+- 任务启停状态（`enabled`）
+- 调度类型与频率（`trigger_type`: `interval` / `cron` / `date` 及实际参数）
+- 业务执行参数（JSON）
+- 重试与超时策略（如业务需要）
+- 最近执行时间、配置版本号与更新时间（用于调度器检测并重载变更）
 
-每次任务执行都必须落库：
+## 执行审计记录
 
-- 任务 ID
-- 开始时间 / 结束时间
-- 执行状态（成功/失败）
+每次任务执行（包括定时触发与 API 手动触发）都必须落库到 `task_execution_records`：
+
+- 任务 ID、触发来源（`scheduled` / `manual`）
+- 开始时间 / 结束时间（UTC+8，使用 `now_cn`）
+- 执行状态（`success` / `failed`）
 - 错误信息摘要（失败时）
-- 关键执行上下文（必要且脱敏）
-- 数据库中的任务信息只保留最近1个月
+- 关键执行上下文（脱敏）
+- 定期清理策略：仅保留最近 1 个月的执行记录
 
-## Process / Signal Handling
+## 独立调度进程入口模板 (`scripts/run_scheduler.py`)
 
-- 使用 `BlockingScheduler` 时必须处理 `SystemExit` 信号
-- 在scripts/run_scheduler.py中启动和停止调度服务
-- 服务重启或停止时，应尽量让正在执行的任务完整收尾
-- 必须有可控的优雅停止策略（例如先停止新调度，再等待当前任务结束）
-- 日志配置见 [日志模块模板](logger.md)，调度进程启动时需调用 `configure_logging(app, is_scheduler=True)`
+```python
+#!/usr/bin/env python3
+"""独立 APScheduler 调度进程入口：与 Flask Web 共享配置和 app/tasks/ 代码。"""
+
+import signal
+import sys
+
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.schedulers.blocking import BlockingScheduler
+
+from app import create_app
+
+
+def build_scheduler(database_url: str) -> BlockingScheduler:
+    jobstores = {
+        "default": SQLAlchemyJobStore(url=database_url, tablename="apscheduler_jobs")
+    }
+    return BlockingScheduler(
+        jobstores=jobstores,
+        timezone="Asia/Shanghai",
+        job_defaults={"coalesce": True, "max_instances": 1},
+    )
+
+
+def main() -> None:
+    app = create_app(is_scheduler=True)
+    if not app.config.get("SCHEDULER_ENABLED", False):
+        app.logger.warning("SCHEDULER_ENABLED 未开启，调度进程退出")
+        return
+
+    scheduler = build_scheduler(app.config["SQLALCHEMY_DATABASE_URI"])
+
+    def handle_shutdown(signum, _frame):
+        app.logger.info(f"收到退出信号 ({signum})，等待当前任务完成后优雅停止调度器...")
+        # shutdown(wait=True) 会停止新调度并等待正在执行的任务收尾
+        scheduler.shutdown(wait=True)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, handle_shutdown)
+    signal.signal(signal.SIGINT, handle_shutdown)
+
+    with app.app_context():
+        # 从数据库加载启用的任务配置并同步到 scheduler（实现位于 app/scheduler/loader.py）
+        from app.scheduler.loader import sync_jobs_from_db
+
+        sync_jobs_from_db(scheduler)
+        app.logger.info("独立调度进程已启动")
+        try:
+            scheduler.start()
+        except (KeyboardInterrupt, SystemExit):
+            app.logger.info("调度进程已停止")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+> **注意**：`app/scheduler/runner.py` 包装具体任务函数时，应在执行前创建/进入 `app.app_context()`，捕获异常并写入 `task_execution_records`，避免单次任务异常导致调度线程静默丢失审计记录。

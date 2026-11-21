@@ -180,13 +180,12 @@ from flask_migrate import upgrade
 @pytest.fixture(scope="session")
 def app():
     load_dotenv()
-    os.environ["FLASK_ENV"] = "testing"
     if not os.getenv("TEST_DATABASE_URL"):
         pytest.fail("测试前必须设置 TEST_DATABASE_URL，禁止回退到开发数据库")
 
     from app import create_app
 
-    app = create_app()
+    app = create_app("testing")
     assert app.config["TESTING"] is True
     with app.app_context():
         upgrade()  # 仅在 TestingConfig 指定的隔离数据库上执行迁移

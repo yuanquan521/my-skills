@@ -140,20 +140,14 @@ routes = [
 
 ```python
 # app/models/orders.py
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.time import now_cn
 from app.db.base import Base
-
-UTC_PLUS_8 = timezone(timedelta(hours=8))
-
-
-def now_cn() -> datetime:
-    """Current UTC+8 wall-clock time (naive) — the one clock used everywhere."""
-    return datetime.now(UTC_PLUS_8).replace(tzinfo=None)
 
 
 class Order(Base):

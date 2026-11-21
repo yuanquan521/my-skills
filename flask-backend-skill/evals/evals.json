@@ -1,0 +1,46 @@
+{
+  "skill_name": "flask-backend-skill",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "在当前空目录搭建一个 Flask + PostgreSQL 后端 API 项目，用 uv 管理依赖，需要工厂模式、.env 多环境配置、Flask-Migrate、JWT 登录认证、Loguru 日志、Gunicorn 配置以及 code/message/data 统一返回与异常处理。不需要定时任务。",
+      "expected_output": "生成标准化 Flask 后端目录结构（不含 scheduler/ 与 scripts/run_scheduler.py，因为明确不需要定时任务）、pyproject.toml + .python-version + uv.lock、config.py 动态加载配置并校验生产/测试环境、app/__init__.py create_app()、app/core/{models,exceptions,responses}.py、app/extensions/{database,logger,auth}.py、Flask-Migrate 初始化、Blueprint 集中注册、gunicorn.conf.py、极简 manage.py 与 wsgi.py、仅预留 tests/ 目录结构。",
+      "files": [],
+      "expectations": [
+        "app/__init__.py exposes create_app() and config.py loads .env dynamically via load_config() rather than freezing os.getenv at import time.",
+        "Database uses postgresql+psycopg:// with Flask-Migrate; db.create_all() is never called.",
+        "All ORM models inherit BaseModel with SQLAlchemy 2.0 Mapped[...] annotations, comment=... on columns, no comment on relationship(), and UTC+8 now_cn timestamps.",
+        "Queries use db.session.query(Model)... and never Model.query.",
+        "Responses use code (0/1), message, data (null on failure, details separated) via app/core/responses.py; all JWT auth failures return HTTP 401.",
+        "Loguru logger honors app.config['LOG_LEVEL'] and writes to web.log; Gunicorn uses gthread without log double-writing.",
+        "No scheduler/, tasks/, or scripts/run_scheduler.py are created when scheduled jobs were explicitly excluded."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "在当前目录创建一个带独立 APScheduler 定时任务能力的 Flask + PostgreSQL 后端，需要数据库驱动任务配置、执行记录落库，以及 Web 侧的任务管理/手动触发/历史查询接口。",
+      "expected_output": "在标准 Flask 工厂骨架基础上，增加 app/models/{scheduled_task,task_execution_record}.py、app/scheduler/{manager,loader,runner}.py、app/tasks/、scripts/run_scheduler.py（使用 BlockingScheduler + SQLAlchemyJobStore + SIGTERM/SIGINT 优雅退出 + is_scheduler=True 独立 scheduler.log）、apscheduler_jobs 的手工 Alembic 迁移说明、以及 Flask 侧任务管理 Blueprint（/api/tasks/schedules, /status, /history, /trigger）。绝不在 Flask Web 进程中启动调度器。",
+      "files": [],
+      "expectations": [
+        "Scheduler runs only in standalone scripts/run_scheduler.py using BlockingScheduler and SQLAlchemyJobStore; Flask-APScheduler is not used and scheduler is never started inside create_app().",
+        "An explicit manual Flask-Migrate migration creates the apscheduler_jobs table including the next_run_time column and index.",
+        "Web logs write to web.log while scripts/run_scheduler.py passes is_scheduler=True to write to scheduler.log.",
+        "Task schedules and execution audit records are modeled in PostgreSQL with UTC+8 timestamps and column comments.",
+        "Flask task management endpoints expose schedules, status, history, and manual trigger with idempotency/concurrency guards."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "帮我给现有 Flask 项目新增一个 orders 模块：包含 Order 模型、Pydantic 校验、Service 层多步下单事务和 Blueprint 路由，所有接口返回 code/message/data 且时间字段返回 YYYY-MM-DD HH:MM:SS（UTC+8）。",
+      "expected_output": "新增 app/models/order.py（继承 BaseModel、SQLAlchemy 2.0 Mapped 注解、所有物理列带 comment、relationship 不带 comment）、app/schemas/order.py、app/services/order_service.py（统一控制 db.session.commit()/rollback()）、app/api/orders.py 并在 app/api/__init__.py 集中注册；使用 to_cn_time 格式化展示时间；查询用 db.session.query(Order) 而非 Order.query；通过 APIException 抛业务错。",
+      "files": [],
+      "expectations": [
+        "Order inherits BaseModel, uses Mapped[...] annotations, includes comment on every mapped_column, and omits comment on any relationship().",
+        "Multi-step order creation commits in the service layer (not scattered in view functions or intermediate model.save() calls).",
+        "Queries use db.session.query(Order) rather than Order.query.",
+        "Display datetime fields serialize via to_cn_time as YYYY-MM-DD HH:MM:SS (UTC+8).",
+        "Order Blueprint is registered centrally in app/api/__init__.py and uses success()/paginate() and APIException subclasses."
+      ]
+    }
+  ]
+}

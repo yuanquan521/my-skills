@@ -48,16 +48,21 @@ class BaseModel(db.Model):
         comment="更新时间（UTC+8）"
     )
 
-    def save(self):
-        """保存当前对象到数据库"""
+    def save(self, *, commit: bool = True):
+        """
+        将当前对象加入会话；单步简单写入可直接 commit=True，
+        在多步 Service 事务中请传 commit=False 或直接使用 db.session.add() + Service 层统一 commit()。
+        """
         db.session.add(self)
-        db.session.commit()
+        if commit:
+            db.session.commit()
         return self
 
-    def delete(self):
-        """从数据库删除当前对象"""
+    def delete(self, *, commit: bool = True):
+        """从会话删除当前对象；多步事务中请传 commit=False 由 Service 层统一提交。"""
         db.session.delete(self)
-        db.session.commit()
+        if commit:
+            db.session.commit()
 
     @classmethod
     def get_by_id(cls, record_id):
@@ -68,5 +73,6 @@ class BaseModel(db.Model):
 ## 使用说明
 
 1. 业务模型均继承 `BaseModel`，并重写 `__tablename__`（推荐使用小写复数或具有明确领域意义的命名）。
-2. 可根据项目需要增加软删除标记 `is_deleted` 等共有业务字段。
-3. 时间字段统一存储 UTC+8 本地时间（naive `DateTime` 列），与 API 输出同一时钟；不要改回 `DateTime(timezone=True)`、`func.now()` 或 `datetime.now(timezone.utc)`，否则时间链路会出现两种时区。
+2. 所有物理列必须带 `comment="说明"`，但 `relationship()` 上禁止传 `comment`。
+3. 涉及多表或多步写入时，在 Service 层统一 `db.session.commit()` / `rollback()`，不要在循环或中间步骤调用默认 `save()` 导致提前提交破坏事务原子性。
+4. 时间字段统一存储 UTC+8 本地时间（naive `DateTime` 列），与 API 输出同一时钟；不要改回 `DateTime(timezone=True)`、`func.now()` 或 `datetime.now(timezone.utc)`，否则时间链路会出现两种时区。

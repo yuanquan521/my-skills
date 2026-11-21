@@ -1,53 +1,14 @@
 # Unified Exceptions Template
 
-为了实现统一返回格式 `code/message/data`，所有业务代码或路由层抛出的业务异常，应当统一通过自定义异常类处理。然后由全局错误处理函数（Global Error Handler）接管，格式化输出给客户端。
+为保持全站统一返回格式 `code/message/data`，所有业务异常统一通过 `APIException` 及其子类抛出，由全局异常处理器接管格式化。
 
-**业务码约定**：JSON body 中 `code` 固定为 `1`（失败），错误语义通过 HTTP 状态码区分。
+**约定**：
+- JSON body 中 `code` 固定为 `1`（失败），具体错误语义由 HTTP 状态码承载。
+- 所有 JWT 认证失败（缺失、格式无效、过期、吊销、校验失败）统一返回 HTTP `401`，方便前端/客户端只拦截 401 处理登录态刷新或跳转，不与参数校验错误 `422` 混淆。
 
-## Exceptions 示例 (`app/core/exceptions.py`)
+## 完整模块示例 (`app/core/exceptions.py`)
 
-```python
-class APIException(Exception):
-    """
-    通用业务异常基类
-    """
-    def __init__(
-        self,
-        message: str = "Bad Request",
-        http_status: int = 400,
-        data: dict | list | None = None,
-        details: dict | list | str | None = None
-    ):
-        self.message = message
-        self.http_status = http_status
-        self.data = data
-        self.details = details
-        super().__init__(self.message)
-
-class NotFoundException(APIException):
-    def __init__(self, message: str = "资源不存在", details=None):
-        super().__init__(message=message, http_status=404, details=details)
-
-class AuthException(APIException):
-    def __init__(self, message: str = "认证失败，请重新登录", details=None):
-        super().__init__(message=message, http_status=401, details=details)
-
-class ForbiddenException(APIException):
-    def __init__(self, message: str = "无权进行该操作", details=None):
-        super().__init__(message=message, http_status=403, details=details)
-
-class ValidationException(APIException):
-    def __init__(self, message: str = "参数校验失败", details=None):
-        super().__init__(message=message, http_status=422, details=details)
-
-class DuplicateRecordException(APIException):
-    def __init__(self, message: str = "记录已存在", details=None):
-        super().__init__(message=message, http_status=409, details=details)
-```
-
-## 全局异常捕获
-
-在 `app/__init__.py` 的 `create_app` 中，调用 `register_error_handlers(app)` 对 `APIException`、Pydantic 校验错误以及其他内置异常（如 404、500）进行全局捕获。`JWTManager` 初始化后还必须调用 `register_jwt_error_handlers(jwt)`，覆盖其默认错误响应，确保 JWT 错误同样返回标准结构：
+以下全部代码可直接作为单个 `app/core/exceptions.py` 使用（无自我循环导入）：
 
 ```python
 from flask import Flask, current_app
@@ -55,11 +16,54 @@ from flask_jwt_extended import JWTManager
 from pydantic import ValidationError
 from werkzeug.exceptions import HTTPException
 
-from app.core.exceptions import APIException
 from app.core.responses import fail
 
 
-def register_error_handlers(app: Flask):
+class APIException(Exception):
+    """通用业务异常基类"""
+
+    def __init__(
+        self,
+        message: str = "Bad Request",
+        http_status: int = 400,
+        data: dict | list | None = None,
+        details: dict | list | str | None = None,
+    ):
+        self.message = message
+        self.http_status = http_status
+        self.data = data
+        self.details = details
+        super().__init__(self.message)
+
+
+class NotFoundException(APIException):
+    def __init__(self, message: str = "资源不存在", details=None):
+        super().__init__(message=message, http_status=404, details=details)
+
+
+class AuthException(APIException):
+    def __init__(self, message: str = "认证失败，请重新登录", details=None):
+        super().__init__(message=message, http_status=401, details=details)
+
+
+class ForbiddenException(APIException):
+    def __init__(self, message: str = "无权进行该操作", details=None):
+        super().__init__(message=message, http_status=403, details=details)
+
+
+class ValidationException(APIException):
+    def __init__(self, message: str = "参数校验失败", details=None):
+        super().__init__(message=message, http_status=422, details=details)
+
+
+class DuplicateRecordException(APIException):
+    def __init__(self, message: str = "记录已存在", details=None):
+        super().__init__(message=message, http_status=409, details=details)
+
+
+def register_error_handlers(app: Flask) -> None:
+    """在 create_app() 中调用，接管业务异常、Pydantic 校验、HTTP 错误与未知异常。"""
+
     @app.errorhandler(APIException)
     def handle_api_exception(e: APIException):
         return fail(
@@ -94,7 +98,7 @@ def register_error_handlers(app: Flask):
         return fail(message="Internal Server Error", http_status=500)
 
 
-def register_jwt_error_handlers(jwt: JWTManager):
+def register_jwt_error_handlers(jwt: JWTManager) -> None:
     """在 JWTManager 初始化后调用，覆盖 Flask-JWT-Extended 的默认响应。"""
 
     @jwt.unauthorized_loader
@@ -109,7 +113,7 @@ def register_jwt_error_handlers(jwt: JWTManager):
     def handle_invalid_token(reason: str):
         return fail(
             message="认证令牌无效",
-            http_status=422,
+            http_status=401,
             details={"reason": reason},
         )
 
@@ -129,3 +133,5 @@ def register_jwt_error_handlers(jwt: JWTManager):
     def handle_token_verification_failed(_jwt_header, _jwt_payload):
         return fail(message="认证令牌校验失败", http_status=401)
 ```
+
+> 若项目未启用 JWT 认证，省略 `flask_jwt_extended` 导入和 `register_jwt_error_handlers` 即可。

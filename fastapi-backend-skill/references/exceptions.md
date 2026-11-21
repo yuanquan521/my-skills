@@ -16,11 +16,13 @@ class AppError(Exception):
         *,
         status_code: int = 400,
         details: Any | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         self.code = code
         self.message = message
         self.status_code = status_code
         self.details = details
+        self.headers = headers
         super().__init__(message)
 ```
 
@@ -30,6 +32,7 @@ class AppError(Exception):
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.exceptions import AppError
 from app.core.logging import get_logger
@@ -37,6 +40,16 @@ from app.core.responses import error
 
 
 logger = get_logger(__name__)
+
+_HTTP_STATUS_CODES: dict[int, str] = {
+    400: "BAD_REQUEST",
+    401: "UNAUTHORIZED",
+    403: "FORBIDDEN",
+    404: "NOT_FOUND",
+    405: "METHOD_NOT_ALLOWED",
+    409: "CONFLICT",
+    429: "TOO_MANY_REQUESTS",
+}
 
 
 def _request_id(request: Request) -> str | None:
@@ -46,10 +59,30 @@ def _request_id(request: Request) -> str | None:
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,
+        headers=exc.headers,
         content=error(
             code=exc.code,
             message=exc.message,
             data=exc.details,
+            request_id=_request_id(request),
+        ).model_dump(),
+    )
+
+
+async def http_exception_handler(
+    request: Request,
+    exc: StarletteHTTPException,
+) -> JSONResponse:
+    code = _HTTP_STATUS_CODES.get(exc.status_code, "HTTP_ERROR")
+    message = exc.detail if isinstance(exc.detail, str) else "HTTP error"
+    data = None if isinstance(exc.detail, str) else exc.detail
+    return JSONResponse(
+        status_code=exc.status_code,
+        headers=exc.headers,
+        content=error(
+            code=code,
+            message=message,
+            data=data,
             request_id=_request_id(request),
         ).model_dump(),
     )
@@ -85,11 +118,12 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(AppError, app_error_handler)
+    app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)
 ```
 
-Going through `error(...)` (from `responses.py`) means error envelopes always match `ApiResponse`. Adding a field to the envelope changes both success and error paths together; hand-rolled dicts here would silently drift.
+Going through `error(...)` (from `responses.py`) means error envelopes always match `ApiResponse`. Registering `StarletteHTTPException` is equally important: without it, framework-generated 404/405 responses and `OAuth2PasswordBearer`'s missing-token 401 bypass `Exception` and return bare `{"detail": "..."}` JSON instead of the unified envelope. Adding a field to the envelope changes both success and error paths together; hand-rolled dicts here would silently drift.
 
 ## Usage Notes
 

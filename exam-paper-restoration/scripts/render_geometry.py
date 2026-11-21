@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """
-几何原图矢量渲染辅助工具 (Geometric Diagram Helper)
+几何原图矢量校验与渲染辅助工具 (Geometric Diagram Validator & Renderer)
 
-将纯黑白 SVG 几何线框图转换为高清 PNG（用于不支持 SVG 的 Word/微信等场景）。
-Markdown 与 HTML 交付优先直接使用 .svg，仅在需要位图时调用本脚本。
+功能：
+1. 校验纯黑白 SVG 几何图规范性（XML 语法、白底背景、纯黑白配色、推荐宽度、文本坐标越界）。
+2. 将 SVG 转换为高清 PNG（用于不支持 SVG 的 Word/微信等场景），支持单图与 --output-dir 批量导出。
 
 用法示例:
+    python3 scripts/render_geometry.py --check-only resources/orig_q10.svg resources/orig_q12.svg
     python3 scripts/render_geometry.py resources/orig_q10.svg out/q10.png --scale 2
+    python3 scripts/render_geometry.py --output-dir out/ --scale 2 resources/orig_q10.svg resources/orig_q12.svg
     cat diagram.svg | python3 scripts/render_geometry.py - out/q10.png --scale 2
 
 后端自动降级顺序 (--backend auto):
@@ -30,17 +33,74 @@ from pathlib import Path
 
 RECOMMENDED_MIN_WIDTH = 160.0
 RECOMMENDED_MAX_WIDTH = 600.0
+MONOCHROME_KEYWORDS = {
+    "none",
+    "transparent",
+    "currentcolor",
+    "black",
+    "white",
+    "gray",
+    "grey",
+    "silver",
+    "dimgray",
+    "dimgrey",
+    "darkgray",
+    "darkgrey",
+    "lightgray",
+    "lightgrey",
+    "gainsboro",
+    "whitesmoke",
+}
+WHITE_KEYWORDS = {"white", "#fff", "#ffffff", "rgb(255,255,255)"}
 
 
 def _parse_px(value: str | None) -> float | None:
     if not value:
         return None
-    match = re.match(r"^\s*([0-9]+(?:\.[0-9]+)?)\s*(?:px)?\s*$", value)
+    match = re.match(r"^\s*([+-]?[0-9]+(?:\.[0-9]+)?)\s*(?:px)?\s*$", value)
     return float(match.group(1)) if match else None
 
 
+def _is_monochrome_color(raw: str | None) -> bool:
+    if not raw:
+        return True
+    val = re.sub(r"\s+", "", raw.strip().lower())
+    if not val or val in MONOCHROME_KEYWORDS or val.startswith("url("):
+        return True
+    hex_match = re.match(r"^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$", val)
+    if hex_match:
+        h = hex_match.group(1)
+        if len(h) == 3:
+            return h[0] == h[1] == h[2]
+        r, g, b = h[0:2], h[2:4], h[4:6]
+        return r == g == b
+    rgb_match = re.match(r"^rgba?\((\d+),(\d+),(\d+)(?:,[0-9.]+)?\)$", val)
+    if rgb_match:
+        return rgb_match.group(1) == rgb_match.group(2) == rgb_match.group(3)
+    return False
+
+
+def _is_white_fill(raw: str | None) -> bool:
+    if not raw:
+        return False
+    val = re.sub(r"\s+", "", raw.strip().lower())
+    return val in WHITE_KEYWORDS
+
+
+def _extract_style_colors(style: str) -> list[tuple[str, str]]:
+    found: list[tuple[str, str]] = []
+    for part in style.split(";"):
+        if ":" not in part:
+            continue
+        key, val = part.split(":", 1)
+        key = key.strip().lower()
+        if key in {"stroke", "fill", "color"}:
+            found.append((key, val.strip()))
+    return found
+
+
 def validate_svg(svg_content: str) -> tuple[float | None, float | None, list[str]]:
-    """校验 SVG 语法合法性，并返回 (width, height, warnings)。高度不设硬限制。"""
+    """校验 SVG 语法与试卷印刷规范，返回 (width, height, warnings)。高度不设硬限制。"""
     try:
         root = ET.fromstring(svg_content)
     except ET.ParseError as exc:
@@ -52,13 +112,18 @@ def validate_svg(svg_content: str) -> tuple[float | None, float | None, list[str
 
     width = _parse_px(root.attrib.get("width"))
     height = _parse_px(root.attrib.get("height"))
+    vb_min_x = 0.0
+    vb_min_y = 0.0
+    vb_width: float | None = None
+    vb_height: float | None = None
 
-    if (width is None or height is None) and "viewBox" in root.attrib:
+    if "viewBox" in root.attrib:
         parts = re.split(r"[\s,]+", root.attrib["viewBox"].strip())
         if len(parts) == 4:
             try:
-                width = width if width is not None else float(parts[2])
-                height = height if height is not None else float(parts[3])
+                vb_min_x, vb_min_y, vb_width, vb_height = (float(p) for p in parts)
+                width = width if width is not None else vb_width
+                height = height if height is not None else vb_height
             except ValueError:
                 pass
 
@@ -72,6 +137,63 @@ def validate_svg(svg_content: str) -> tuple[float | None, float | None, list[str
             warnings.append(
                 f"SVG 宽度偏大 ({width:g}px > {RECOMMENDED_MAX_WIDTH:g}px)，建议控制在 280px~400px 左右"
             )
+
+    # 检查纯白底背景（避免暗色模式/微信预览下黑线透明不可见）
+    has_white_bg = False
+    non_mono_colors: set[str] = set()
+    oob_texts: list[str] = []
+
+    bound_w = vb_width if vb_width is not None else width
+    bound_h = vb_height if vb_height is not None else height
+
+    for elem in root.iter():
+        local_tag = elem.tag.split("}")[-1].lower()
+        fill_attr = elem.attrib.get("fill")
+        stroke_attr = elem.attrib.get("stroke")
+        style_attr = elem.attrib.get("style", "")
+        style_pairs = _extract_style_colors(style_attr)
+
+        if local_tag == "rect" and not has_white_bg:
+            effective_fill = fill_attr
+            for k, v in style_pairs:
+                if k == "fill":
+                    effective_fill = v
+            if _is_white_fill(effective_fill):
+                rw = elem.attrib.get("width", "").strip()
+                rh = elem.attrib.get("height", "").strip()
+                if (rw == "100%" or (_parse_px(rw) or 0) >= (bound_w or 0) * 0.9) and (
+                    rh == "100%" or (_parse_px(rh) or 0) >= (bound_h or 0) * 0.9
+                ):
+                    has_white_bg = True
+
+        for color_val in (fill_attr, stroke_attr):
+            if color_val and not _is_monochrome_color(color_val):
+                non_mono_colors.add(color_val)
+        for _k, color_val in style_pairs:
+            if not _is_monochrome_color(color_val):
+                non_mono_colors.add(color_val)
+
+        if local_tag == "text" and bound_w is not None and bound_h is not None:
+            tx = _parse_px(elem.attrib.get("x"))
+            ty = _parse_px(elem.attrib.get("y"))
+            if tx is not None and (tx < vb_min_x or tx > vb_min_x + bound_w):
+                oob_texts.append((elem.text or "").strip() or f"x={tx:g}")
+            elif ty is not None and (ty < vb_min_y or ty > vb_min_y + bound_h):
+                oob_texts.append((elem.text or "").strip() or f"y={ty:g}")
+
+    if not has_white_bg:
+        warnings.append(
+            "未检测到覆盖画布的纯白背景 <rect fill=\"#ffffff\" />，在暗色模式或微信中黑线可能不可见"
+        )
+    if non_mono_colors:
+        sample = ", ".join(sorted(non_mono_colors)[:5])
+        warnings.append(
+            f"检测到非纯黑白/灰度配色 ({sample})，原题印刷配图建议仅使用纯黑线框与白底"
+        )
+    if oob_texts:
+        sample = ", ".join(oob_texts[:5])
+        warnings.append(f"检测到文本坐标超出画布 viewBox 边界 ({sample})，导出后可能被裁切")
+
     return width, height, warnings
 
 
@@ -185,15 +307,26 @@ def render_svg_to_png(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="将纯黑白 SVG 几何原图转换为高清 PNG（自动降级选择可用渲染器）。"
+        description="校验纯黑白 SVG 几何原图并按需转换为高清 PNG（支持单图、批量与仅校验模式）。"
     )
     parser.add_argument(
-        "input_svg",
-        help="输入 SVG 文件路径；传 '-' 表示从标准输入读取 SVG 内容。",
+        "paths",
+        nargs="+",
+        help=(
+            "单图转换: <input.svg|-> <output.png>；"
+            "仅校验 (--check-only) 或批量转换 (--output-dir): 一个或多个 <input.svg>。"
+        ),
     )
     parser.add_argument(
-        "output_png",
-        help="输出 PNG 文件路径。",
+        "--check-only",
+        action="store_true",
+        help="仅校验 SVG 语法与试卷印刷规范（不生成 PNG）。",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="批量导出目录：将每个输入 SVG 按同名 .png 输出到此目录。",
     )
     parser.add_argument(
         "--scale",
@@ -210,23 +343,65 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _read_svg(path_arg: str) -> str:
+    if path_arg == "-":
+        return sys.stdin.read()
+    input_path = Path(path_arg)
+    if not input_path.exists():
+        raise FileNotFoundError(f"找不到输入文件: {input_path}")
+    return input_path.read_text(encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.input_svg == "-":
-        svg_content = sys.stdin.read()
-    else:
-        input_path = Path(args.input_svg)
-        if not input_path.exists():
-            print(f"[ERROR] 找不到输入文件: {input_path}", file=sys.stderr)
-            return 1
-        svg_content = input_path.read_text(encoding="utf-8")
+    if args.check_only:
+        exit_code = 0
+        for item in args.paths:
+            try:
+                content = _read_svg(item)
+                width, height, warnings = validate_svg(content)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[ERROR] {item}: {exc}", file=sys.stderr)
+                exit_code = 1
+                continue
+            for warn in warnings:
+                print(f"[WARN] {item}: {warn}", file=sys.stderr)
+            size_info = f"{width:g}x{height:g}px" if width and height else "未声明尺寸"
+            print(f"[OK] {item}: 校验通过 ({size_info}, {len(warnings)} 条告警)")
+        return exit_code
 
+    if args.output_dir is not None:
+        exit_code = 0
+        for item in args.paths:
+            if item == "-":
+                print("[ERROR] --output-dir 模式不支持从标准输入 '-' 读取", file=sys.stderr)
+                return 1
+            try:
+                content = _read_svg(item)
+                out_path = args.output_dir / f"{Path(item).stem}.png"
+                rendered = render_svg_to_png(
+                    content,
+                    out_path,
+                    scale_factor=args.scale,
+                    backend=args.backend,
+                )
+                print(f"[OK] 成功生成高清图: {rendered}")
+            except Exception as exc:  # noqa: BLE001
+                print(f"[ERROR] {item}: {exc}", file=sys.stderr)
+                exit_code = 1
+        return exit_code
+
+    if len(args.paths) != 2:
+        parser.error("单图转换需提供 <input_svg> <output_png> 两个路径，或使用 --check-only / --output-dir")
+
+    input_arg, output_arg = args.paths
     try:
+        svg_content = _read_svg(input_arg)
         out_path = render_svg_to_png(
             svg_content,
-            args.output_png,
+            output_arg,
             scale_factor=args.scale,
             backend=args.backend,
         )

@@ -158,17 +158,13 @@ class Base(DeclarativeBase):
 from app import models  # noqa: F401 — re-exported models for Alembic discovery
 ```
 
-## Model Pattern
+## Shared UTC+8 Clock (`app/core/time.py`)
+
+Keep `UTC_PLUS_8`, `now_cn`, and `to_cn_time` in one shared module rather than redefining them in every model or schema file:
 
 ```python
-# app/models/users.py
+# app/core/time.py
 from datetime import datetime, timedelta, timezone
-from uuid import UUID, uuid4
-
-from sqlalchemy import DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column
-
-from app.db.base import Base
 
 UTC_PLUS_8 = timezone(timedelta(hours=8))
 
@@ -176,6 +172,27 @@ UTC_PLUS_8 = timezone(timedelta(hours=8))
 def now_cn() -> datetime:
     """Current UTC+8 wall-clock time (naive) — the one clock used everywhere."""
     return datetime.now(UTC_PLUS_8).replace(tzinfo=None)
+
+
+def to_cn_time(value: datetime) -> str:
+    """Format naive UTC+8 storage (or convert aware datetimes) to YYYY-MM-DD HH:MM:SS."""
+    if value.tzinfo is not None:
+        value = value.astimezone(UTC_PLUS_8).replace(tzinfo=None)
+    return value.strftime("%Y-%m-%d %H:%M:%S")
+```
+
+## Model Pattern
+
+```python
+# app/models/users.py
+from datetime import datetime
+from uuid import UUID, uuid4
+
+from sqlalchemy import DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.core.time import now_cn
+from app.db.base import Base
 
 
 class User(Base):

@@ -132,22 +132,18 @@ Always set `response_model=ApiResponse[...]` on the `RouteSpec` so FastAPI emits
 The time pipeline is UTC+8 (`Asia/Shanghai`) end to end: the database stores UTC+8 wall-clock times in naive `DateTime` columns (`now_cn` — see `database.md`), so stored values are exactly what clients see. When the API explicitly requires display-ready times, datetime fields serialize as human-readable `YYYY-MM-DD HH:MM:SS` strings (e.g. `2026-11-09 14:30:00`) — not raw ISO-8601 strings or epoch timestamps. Stored values are already UTC+8, so serialization is pure formatting:
 
 ```python
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
+from uuid import UUID
 
-from pydantic import BaseModel, field_serializer
+from pydantic import BaseModel, ConfigDict, field_serializer
 
-UTC_PLUS_8 = timezone(timedelta(hours=8))
-
-
-def to_cn_time(value: datetime) -> str:
-    """Naive values are already UTC+8 storage; aware values get converted."""
-    if value.tzinfo is not None:
-        value = value.astimezone(UTC_PLUS_8).replace(tzinfo=None)
-    return value.strftime("%Y-%m-%d %H:%M:%S")
+from app.core.time import to_cn_time
 
 
 class UserRead(BaseModel):
-    id: int
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
     created_at: datetime
 
     @field_serializer("created_at")

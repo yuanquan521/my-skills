@@ -1,0 +1,82 @@
+[
+  {
+    "query": "在当前目录帮我搭一个 Flask + PostgreSQL + Flask-SQLAlchemy 后端项目，需要工厂模式、Flask-Migrate、Loguru 和 code/message/data 统一返回",
+    "should_trigger": true
+  },
+  {
+    "query": "我们这个 Flask 后端需要加一个定时同步数据的后台任务，用独立 APScheduler 进程和 SQLAlchemyJobStore，不能放 Web 进程里跑",
+    "should_trigger": true
+  },
+  {
+    "query": "把现有 Flask 项目的 Model.query 和 db.create_all() 重构成 Flask-Migrate + SQLAlchemy 2.0 Mapped 写法 + db.session.query 规范",
+    "should_trigger": true
+  },
+  {
+    "query": "给这个 Flask-JWT-Extended 项目统一异常拦截，让 Pydantic 校验错误和 JWT 过期/无效令牌都返回 code=1/message/data 的标准 JSON",
+    "should_trigger": true
+  },
+  {
+    "query": "Refactor our Flask API logging from stdlib logging to Loguru so Gunicorn workers and our standalone scheduler process write safely to separate log files.",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我给 Flask 生产部署补一份 gunicorn.conf.py、wsgi.py 和极简 manage.py，按我们的标准配置来",
+    "should_trigger": true
+  },
+  {
+    "query": "新增一个 Flask Blueprint 模块用于管理定时任务的手动触发、调度间隔修改和历史执行记录分页查询",
+    "should_trigger": true
+  },
+  {
+    "query": "Set up a new pure Flask backend API with psycopg3, PostgreSQL, Pydantic schemas, and isolated TestingConfig pytest fixtures.",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把 Flask 项目里的 BaseModel 和接口返回时间统一改成全链路 UTC+8，展示字段格式化成 YYYY-MM-DD HH:MM:SS",
+    "should_trigger": true
+  },
+  {
+    "query": "评审一下当前 Flask 项目的代码结构，检查是否符合工厂模式、Blueprint 集中注册、统一响应和字段 comment 规范",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我用 uv 初始化一个 FastAPI + asyncpg + PostgreSQL 异步后端，采用集中 RouteSpec 路由注册，不要用 @router.get 装饰器",
+    "should_trigger": false
+  },
+  {
+    "query": "用 Flask + Jinja2 + HTMX 做一个带登录页和后台管理界面的全栈博客网站",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把这两篇技术博客 URL 的内容总结成自包含的中文 HTML 文件保存到当前目录",
+    "should_trigger": false
+  },
+  {
+    "query": "用 Celery + RabbitMQ 搭一个分布式图像处理队列（不涉及 Flask）",
+    "should_trigger": false
+  },
+  {
+    "query": "Explain why Flask application context is needed when accessing current_app outside a request.",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把这张小学数学错题照片去手写痕迹并生成可打印 A4 错题卷",
+    "should_trigger": false
+  },
+  {
+    "query": "Write a standalone Python script using psycopg to export a PostgreSQL table to CSV.",
+    "should_trigger": false
+  },
+  {
+    "query": "在 FastAPI 项目里加一个 SSE 实时推送进度端点和 JWT 鉴权",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我配置 systemd service 文件来守护一个 Go 后端进程",
+    "should_trigger": false
+  },
+  {
+    "query": "用 SQLite 写一个 30 行的临时 Flask mock server 测试前端回调，不需要迁移和项目结构",
+    "should_trigger": false
+  }
+]
