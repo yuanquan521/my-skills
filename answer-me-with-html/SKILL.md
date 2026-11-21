@@ -2,17 +2,15 @@
 name: answer-me-with-html
 argument-hint: "[config [key value] | clean | update]"
 description: >-
-  Turns an answer into a one-page visual HTML explainer: the model writes a short Markdown draft and
-  the bundled CLI builds one page. Use it proactively and liberally in replies to the user, without being asked, whenever a
-  page would help the reader more than plain text, even if plain text would also work: any explanation
-  of how something works or how parts relate (flow, request path, architecture, code or folder
-  structure, state machine, lifecycle, history); any comparison, trade-off or decision with pros and
-  cons; any diagnosis, review or investigation, especially with several causes or findings to rank;
-  any answer with a table, a numbered or ranked list, steps, branches or several sections; or when the
-  user says "I don't get it / draw it / explain visually / 讲讲原理 / 没看懂 / 画个图". When in doubt, use it: a
-  page is quick and cheap to make. Also for explainer videos ("make a video", "做个视频") and for changing
-  its settings. Skip only for small talk, a trivial one-line answer, or when the user asks for plain
-  text.
+  Turns an answer, explanation, or video/document summary into a single-file visual HTML page
+  stored in /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/ (the model writes an
+  extended Markdown draft and the bundled CLI builds one page). Use ONLY when the user explicitly
+  asks to generate, save, or export an HTML page, visual document, or diagrammed summary (e.g.
+  "生成 HTML", "做成网页/可视化文档", "画成图解页面", "总结成 HTML", "draw it / explain visually",
+  "make a video / 做个视频"), when another skill such as watch invokes it to output an HTML
+  document, or when changing its settings (config/clean). Do NOT trigger automatically for ordinary
+  chat Q&A, tables, lists, or comparisons unless the user requests an HTML output or always-on mode
+  is explicitly active.
 ---
 
 # Answer me with HTML: answer a complex question with one HTML page
@@ -29,13 +27,12 @@ When the arguments start with `config`, `clean` or `update`, or the user asks to
 
 ## 1. Decide: produce a page or not
 
-Produce a page if any of these is true:
-- There are ≥3 interrelated concepts, and the reader needs to see how they relate.
-- There is a flow, protocol, call chain or state transition (especially with branches or several actors).
-- There is a comparison across ≥3 dimensions, a trade-off between options, or a "can / cannot" list.
-- There is a hierarchy or an evolution over time.
+Produce a page ONLY when at least one of these is true:
+- The user explicitly asks to generate, save, or export an HTML document, visual explainer page, diagrammed summary, or explainer video.
+- Another skill (such as `watch`) explicitly delegates HTML rendering to `answer-me-with-html`.
+- Always-on mode (`[answer-me-with-html always-on]`) is explicitly active in context.
 
-Otherwise answer in plain text. When unsure: the more the question "needs a picture to understand", the more it calls for a page.
+Otherwise answer in plain text — do NOT automatically write HTML files into `/Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/` for ordinary chat Q&A, tables, lists, or comparisons.
 
 When the user asks you to explain a repository, draw its architecture or show how its code is organized: read `${CLAUDE_SKILL_DIR}/references/codebase.md` and follow it before you write the draft.
 
@@ -123,7 +120,7 @@ template: sheet     # sheet board (default, one-screen overview) | doc linear ex
 theme: auto         # auto (default): paper for doc or text-only drafts, blueprint with diagrams | blueprint | shadcn | paper | a theme the user made (am list shows it)
 title: Title
 subtitle: One-line summary     # optional
-file: tcp-handshake # when the title has few or no English letters: a short English name for the file
+file: tcp-handshake # optional: custom filename stem (supports English or Chinese; default derives from title)
 cols: 3             # most columns in a sheet row (a whole number), default 3
 source: RFC 9293    # any other key is shown in the page header's meta line
 ---
