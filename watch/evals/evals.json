@@ -1,0 +1,39 @@
+{
+  "skill_name": "watch",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我看一下这个本地 Python 编程教学视频 ~/Downloads/fastapi-demo.mp4，总结核心步骤和代码要点成 HTML 文档。",
+      "expected_output": "先运行 setup.py --json / watch.py（针对代码演示教学建议 --resolution 1024）提取字幕与关键帧，读取关键帧图像与字幕内容后，编写 template: doc 的中文总结草稿（引用关键帧绝对路径与 MM:SS 时间戳），在删除临时 Work dir 之前先通过 answer-me-with-html 的 scripts/am.mjs render - 将 HTML 落盘到 /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/，渲染成功后再清理 Work dir 并返回 file:// 链接。",
+      "files": [],
+      "expectations": [
+        "Runs watch.py (with --resolution 1024 or high-res cue frames for code/slides when using local engine) before summarizing.",
+        "Invokes answer-me-with-html (scripts/am.mjs render -) to generate a template: doc HTML document into /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/.",
+        "Renders the HTML document BEFORE deleting the disposable Work dir so embedded keyframe images exist on disk during am render.",
+        "Cleans up only the disposable Work dir after rendering succeeds (never deletes the user's source video)."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "这个 YouTube 65 分钟的深度学习课程视频 https://www.youtube.com/watch?v=example123 太长了，帮我按章节梳理核心知识点和板书截图，生成一份完整的 HTML 学习笔记。",
+      "expected_output": "对超过 30 分钟的长教学视频，先通过 --detail transcript 获取全片字幕并划分章节，再对关键板书/公式时间段用 --start/--end 与 --resolution 1024 聚焦补抽高清帧，最后整合成单份 template: doc HTML 文档输出到 AI-Outputs/。",
+      "files": [],
+      "expectations": [
+        "Recognizes the 65-minute length and avoids relying solely on sparse full-video frame caps; uses transcript/chapter mapping plus focused --start/--end passes.",
+        "Combines all sections and timestamps into one consolidated template: doc HTML page via answer-me-with-html.",
+        "Cites MM:SS timestamps for sections and outputs directly to /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "帮我看一下这个视频链接 https://example.com/private-course.mp4 的内容并总结成 HTML；如果部分画面或音频无法获取请如实标注，不要编造。",
+      "expected_output": "运行 watch.py 后如遇到下载受限、无字幕或部分区间转录失败，在生成的 HTML 文档顶部用 callout warn 如实列明缺失范围与失败原因，不编造未看见的画面或未听到的内容。",
+      "files": [],
+      "expectations": [
+        "Does not fabricate visual or spoken content when media/captions fail or are partial.",
+        "Adds a callout warn near the top of the HTML document clearly stating unavailable evidence and reasons.",
+        "Still uses answer-me-with-html (scripts/am.mjs render -) to produce the HTML summary unless the user asked for plain text only."
+      ]
+    }
+  ]
+}

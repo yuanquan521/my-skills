@@ -1,0 +1,39 @@
+{
+  "skill_name": "answer-me-with-html",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "把 FastAPI 和 Flask 的核心差异与选型建议整理成一份可视化 HTML 页面保存下来，标题用「FastAPI与Flask架构选型对比」。",
+      "expected_output": "编写扩展 Markdown 草稿（包含对比表格、flow 或 callout 等组件），不手写 HTML/CSS/SVG，通过 scripts/am.mjs render - 渲染成单文件 HTML 并直接保存到 /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/，保留中文文件名（fastapi与flask架构选型对比-YYYYMMDD-HHMMSS.html），最后仅用 2-3 行结论 + file:// 链接回复。",
+      "files": [],
+      "expectations": [
+        "Does not hand-write raw HTML/CSS/SVG; writes an extended Markdown draft and runs scripts/am.mjs render -.",
+        "Writes the output directly to /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/ without creating pages/ subfolders or redirecting to .tmp/answers/.",
+        "Preserves the Chinese title in the generated filename (does not fall back to page-YYYYMMDD-HHMMSS.html).",
+        "Passes STE checks with 0 warnings (or repairs via --replace) and replies concisely with a clickable file:// link."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "请使用 doc 模板生成一份带目录大纲的可视化网页笔记，讲清楚 OAuth2 授权码模式的完整调用流程和各角色职责。",
+      "expected_output": "使用 template: doc 生成线性长文档（至少 3 个面板以启用侧边目录大纲），包含 sequence 时序图与角色职责表格，通过 scripts/am.mjs render - 输出至 AI-Outputs/。",
+      "files": [],
+      "expectations": [
+        "Uses frontmatter template: doc with 3 or more ## panels so the outline rail is generated.",
+        "Uses built-in sequence diagram syntax and Markdown table rather than raw SVG/HTML blocks.",
+        "Outputs directly to /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/ with lang: zh."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "帮我做个 3b1b 风格的讲解视频网页（关闭语音合成），演示请求经过反向代理、网关限流和后端服务的链路。",
+      "expected_output": "先读取 references/video.md，编写带场景与 > 旁白的扩展 Markdown 草稿，调用 scripts/am.mjs video - --voice off，将播放器 HTML 直接输出到 /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/（与普通页面同一单文件夹，不新建 videos/ 子目录）。",
+      "files": [],
+      "expectations": [
+        "Reads references/video.md before drafting the video script.",
+        "Invokes scripts/am.mjs video - --voice off rather than render.",
+        "Outputs the player HTML directly into /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/ (single flat folder, no videos/ subfolder)."
+      ]
+    }
+  ]
+}

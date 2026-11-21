@@ -1,0 +1,82 @@
+[
+  {
+    "query": "我有一个 20 分钟的教学视频 https://www.bilibili.com/video/BV1xx411c7mD 要总结，帮我整理成 HTML 学习笔记",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我看一下 ~/Desktop/screen-recording.mov 这段操作录屏里演示了哪些步骤，输出成 HTML 文档",
+    "should_trigger": true
+  },
+  {
+    "query": "Watch https://www.youtube.com/watch?v=dQw4w9WgXcQ and summarize the key takeaways and slide screenshots into an HTML document.",
+    "should_trigger": true
+  },
+  {
+    "query": "这段本地会议录像 ./meeting.mp4 在 14:20 到 18:45 之间讨论了什么架构改动？帮我核对画面和语音",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把这个 1 小时的 Rust 教程视频按章节整理成带时间戳和关键截图的离线网页笔记",
+    "should_trigger": true
+  },
+  {
+    "query": "看下这个推特视频链接 https://x.com/user/status/123456 里面演示的 UI 交互是怎么做的",
+    "should_trigger": true
+  },
+  {
+    "query": "这个本地视频没有字幕文件，帮我提取语音并结合关键帧总结重点生成 HTML",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我看看这个视频 ~/Downloads/bug-repro.mp4 第 35 秒报错弹窗上写的具体是什么字",
+    "should_trigger": true
+  },
+  {
+    "query": "Summarize this tutorial video URL into an HTML study guide and save it to my AI-Outputs folder.",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我对比一下这个技术分享视频里讲的两种方案，直接看视频内容总结成 HTML 给我",
+    "should_trigger": true
+  },
+  {
+    "query": "用 yt-dlp 帮我把这个 YouTube 视频下载到 ~/Downloads/ 下面，选 1080p mp4 就行，不用看也不用总结",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把这个视频链接里的音频单独抽出来转成 MP3 发我",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我做个 3b1b 风格的讲解视频，用动画演示一下 Raft 选举过程",
+    "should_trigger": false
+  },
+  {
+    "query": "把这篇技术博客网页 https://martinfowler.com/articles/microservices.html 总结成可视化 HTML 文档",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把刚才我们聊的数据库索引优化方案整理成一份带图表的 HTML 总结",
+    "should_trigger": false
+  },
+  {
+    "query": "这张数学试卷照片里的第 10 题帮我去掉手写笔迹还原原题",
+    "should_trigger": false
+  },
+  {
+    "query": "写一个 Python 脚本调用 ffmpeg 给本地视频加水印并压制 H.265",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我看下当前项目 FastAPI 代码里的认证中间件有没有漏洞",
+    "should_trigger": false
+  },
+  {
+    "query": "用 curl 测试一下这个视频接口的 Range 分片下载响应头",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把这份 PDF 论文里的第 3 章翻译成中文 Markdown",
+    "should_trigger": false
+  }
+]

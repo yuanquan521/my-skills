@@ -6,11 +6,12 @@ description: >-
   stored in /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/ (the model writes an
   extended Markdown draft and the bundled CLI builds one page). Use ONLY when the user explicitly
   asks to generate, save, or export an HTML page, visual document, or diagrammed summary (e.g.
-  "生成 HTML", "做成网页/可视化文档", "画成图解页面", "总结成 HTML", "draw it / explain visually",
-  "make a video / 做个视频"), when another skill such as watch invokes it to output an HTML
-  document, or when changing its settings (config/clean). Do NOT trigger automatically for ordinary
-  chat Q&A, tables, lists, or comparisons unless the user requests an HTML output or always-on mode
-  is explicitly active.
+  "生成 HTML", "导出网页笔记", "做成离线 HTML", "做成可视化文档", "生成带目录的网页", "画成图解页面",
+  "总结成 HTML", "draw it / explain visually", "make a video / 做个视频"), when another skill such as
+  watch invokes it to output an HTML document, or when changing its settings (config/clean). Do NOT
+  trigger for ordinary chat Q&A, tables, lists, comparisons, or building project frontend `.html`
+  application pages unless the user asks for an HTML explainer/summary output or always-on mode is
+  explicitly active.
 ---
 
 # Answer me with HTML: answer a complex question with one HTML page
@@ -23,7 +24,7 @@ Reply to the user, and write the draft, in the user's language.
 
 Arguments for this call: `$ARGUMENTS`
 
-When the arguments start with `config`, `clean` or `update`, or the user asks to change a setting, clean up pages or update this skill: read `${CLAUDE_SKILL_DIR}/references/settings.md` and follow it. That turn produces no page.
+When the arguments start with `config`, `clean` or `update`, or the user asks to change a setting, clean up pages or update this skill: read [references/settings.md](references/settings.md) and follow it. That turn produces no page.
 
 ## 1. Decide: produce a page or not
 
@@ -34,7 +35,7 @@ Produce a page ONLY when at least one of these is true:
 
 Otherwise answer in plain text — do NOT automatically write HTML files into `/Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/` for ordinary chat Q&A, tables, lists, or comparisons.
 
-When the user asks you to explain a repository, draw its architecture or show how its code is organized: read `${CLAUDE_SKILL_DIR}/references/codebase.md` and follow it before you write the draft.
+When the user asks you to explain a repository, draw its architecture or show how its code is organized: read [references/codebase.md](references/codebase.md) and follow it before you write the draft.
 
 Automatic pages are for replies to the user. An internal report returned to another agent is not one:
 
@@ -45,27 +46,15 @@ Automatic pages are for replies to the user. An internal report returned to anot
 
 ### Always-on mode
 
-If the context contains the `[answer-me-with-html always-on]` reminder (the user added the always-on rule to a rules file such as `CLAUDE.md` or `AGENTS.md`), the bar is lower:
-
-- Whenever this turn gives a conclusion, summary, plan, comparison, review or explanation, attach a page.
-- Do not skip it because "the answer is short". If there is a conclusion, produce a page.
-- For everyday conclusions use a small page with 2–4 panels: one callout with the conclusion, plus one table or one diagram. Do not add panels just to fill space.
-- Render with `--no-open`, so no browser window interrupts the user. The user opens the page by clicking the path at the end of the reply.
-- Order: render the page first, then write the text reply. The reply is the last thing in the turn, with the page link on its last line (see step 5). Do not write the reply and then call `am render`. The one call that may come after the reply is the choice tool that puts the page's asks to the user, when your host can ask questions: write the reply first, so the user holds the link before answering (see step 5).
-- The internal-report rule of step 1 applies here too: a delegated report that inherits the always-on rule renders no page, unless the delegated task explicitly asks for one.
-- Produce no page for small talk, one or two sentences with no conclusion, pure command output, or when the user asks for plain text.
+Only when `[answer-me-with-html always-on]` is explicitly present in context: attach a small page (`--no-open`, 2–4 panels) whenever the turn gives a conclusion, summary, plan, comparison, review, or explanation (still skip small talk, pure command output, internal subagent reports, or plain-text requests).
 
 ## 2. Workflow (one Bash call)
 
-The CLI is bundled in this skill's directory: `scripts/am.mjs`, a single file with no dependencies to install; it needs only Node.js 20+. If `node` is not found or is older than v20, tell the user, show them the exact command to install the Node.js LTS (macOS `brew install node`, Windows `winget install OpenJS.NodeJS.LTS`, otherwise nvm, which adds lines to the shell profile), and run it only after they agree, then check `node --version` again. If they say no or it still fails, stop and tell them. Below, `am` always means:
+The CLI is bundled in `<skill-dir>/scripts/am.mjs` (requires Node.js 20+; zero npm dependencies). Below, `am` means `node "<skill-dir>/scripts/am.mjs"` (or `am` if installed globally). If your host leaves `${CLAUDE_SKILL_DIR}` unexpanded, substitute the absolute directory containing this `SKILL.md` directly in each command rather than relying on a shell variable across calls, and verify once with `test -f "<skill-dir>/scripts/am.mjs"` if unsure.
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/scripts/am.mjs"
+node "<skill-dir>/scripts/am.mjs"
 ```
-
-In Claude Code, `${CLAUDE_SKILL_DIR}` is replaced with this skill's directory before you read this file, so that command and every path in this file already carry it; run them as written.
-
-On every other host the token is left as it stands or comes out empty. There, before your first command of the turn, write the absolute path of the directory that holds this `SKILL.md` in place of `${CLAUDE_SKILL_DIR}` in every command you run and in every path you read, in this file and in the files under `references/`, and check the path once with `test -f "<that directory>/scripts/am.mjs"`. Do not put the path in a shell variable and use it in a later call: the Bash tool keeps no variable from one call to the next and a file-read tool never expands one, so a `SKILL_DIR` set in one call is empty in the next and the command becomes `/scripts/am.mjs`. The directory is the one holding `SKILL.md` and `scripts/`: `~/.agents/skills/answer-me-with-html` after `npx skills add`, `~/.claude/skills/answer-me-with-html` for a Claude Code skill install, `skills/answer-me-with-html` in the plugin checkout for a plugin install, and the path printed on the host's "Base directory for this skill" line (DeepSeek Harness). If `test -f` fails, that path is not this skill's directory: find the right one before you run anything. If the user installed the `am` command globally, you can also use `am` directly.
 
 Keep the default output; it needs no flag. All generated results (HTML pages and explainer videos) are stored flat in the single output folder `/Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/` by default (no `pages/` or `videos/` subfolders, while runtime state/config/cache stay in `~/.answer-me-with-html/`). Do not redirect output to `.tmp/answers/` unless the user explicitly asks to write inside a workspace or the render fails with `Cannot write the page` (if so, add `-o "<absolute-workspace-path>/.tmp/answers/topic.html"` to `render -` before the heredoc, or `-o "/Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/<name>.html"` when a specific filename is requested). `-o` names an HTML file, not a folder; the CLI creates missing parent directories. Use `AM_HOME` only when the internal data directory must move, or `am config set pages_dir <path>` to change the output folder.
 
@@ -75,7 +64,7 @@ Keep the default output; it needs no flag. All generated results (HTML pages and
 3. Render in one go with a heredoc:
 
 ````bash
-node "${CLAUDE_SKILL_DIR}/scripts/am.mjs" render - <<'AM_EOF'
+node "<skill-dir>/scripts/am.mjs" render - <<'AM_EOF'
 ---
 title: Title
 ---
@@ -94,17 +83,14 @@ AM_EOF
    - `STE n warnings`: rewrite the flagged lines as suggested, then render again. Retry at most 2 rounds; if warnings remain, keep the last page and say so.
    - When rendering again after a `✓`, add `--replace <path from the last ✓ line>` for a page in the configured output folder (`/Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/`) or the temporary folder's `pages/`; the CLI deletes that page once the new one is written. For a page written with `-o`, reuse the same quoted `-o` HTML file path to overwrite it in place.
    - `! Cleanup hint: …` or `! Update hint: …`: pass it on to the user in one sentence at the end of the reply, and ask whether to clean up / update. **Do not run am clean or the update command yourself**; wait until the user agrees. The CLI throttles these: the cleanup hint appears at most once every 7 days, the update hint at most once every 3 days.
-5. Reply in the terminal with only 2–3 lines: one core conclusion + the page link. The 2–3 line limit is for replies to the user. If a parent agent asked for the page, also return the verification details it asked for (step 1), in full. Do not paste the draft or the HTML back into the terminal. Write this reply after the render, as the last step of the turn: render the page first, then reply. No tool call comes after the reply, except the choice tool that puts the page's asks to the user: when the page has asks and your host can ask questions (Claude Code's AskUserQuestion), write this reply first — the page link on its last line — and call that tool right after it, so the user opens the page before answering. Asking first leaves the user answering questions about a page they have not seen. That tool shows the question and the option labels as text: an option preview stays on the page and does not reach the user there, so do not rely on it when the choice goes through that tool.
-   If the render output has a `link:` line, the user runs `am serve`: use that URL as the page link instead, with the URL as the label too, and skip the local-file links below. Never start `am serve` yourself; only the user starts it.
-   Otherwise, in DeepSeek Harness, write a Markdown link directly to the absolute path from the `✓` line, with the path as the label too: `[C:/Users/Name/My Pages/page.html](<C:/Users/Name/My Pages/page.html>)` on Windows or `[/abs/path.html](</abs/path.html>)` on macOS/Linux. Use forward slashes on Windows and angle brackets around the destination so spaces work. These path links open the Document Preview panel.
-   In other hosts, write the page link as a Markdown link to a `file://` URL, with the URL as the label too: `[file:///abs/path.html](file:///abs/path.html)`. Take the absolute path from the `✓` line and add `file://` in front; do not percent-encode it. GUI hosts (Codex, Antigravity) render this as a clickable link, and a terminal still shows the full URL.
-   If you have a `present` tool (DeepSeek Harness), call it with the absolute path from the `✓` line before you reply, so the user can open the page from a card in the app. Still end the reply with the link.
-   If you have an in-app browser tool (such as `open_in_codex` in OpenAI Codex), the render output has a `link:` line, and `am config get open` is not `off`, call that tool with the link (`open_in_codex`: `target: { type: "browser", url: "<link>" }`) so the user sees the page in the app's browser panel. Still end the reply with the link.
+5. Reply in the terminal with only 2–3 lines: one core conclusion + the page link. Do not paste the draft or raw HTML into the terminal. Render the page first, then reply (only a follow-up choice tool for page `ask`s may run after the reply so the user can open the page first).
+   - If the render output has a `link:` line (`am serve` is running), use that URL verbatim (`[url](url)`). Never start `am serve` yourself.
+   - Otherwise write a clickable `file://` Markdown link to the absolute path from the `✓` line (`[file:///abs/path.html](file:///abs/path.html)`, without percent-encoding).
 
 When a page already exists and only one panel needs to change, do not rewrite the whole page. Take the source draft from the HTML's `#am-source`, replace only the matching `##` section, and overwrite the page in place:
 
 ````bash
-node "${CLAUDE_SKILL_DIR}/scripts/am.mjs" patch page.html --panel "Panel title" <<'AM_EOF'
+node "<skill-dir>/scripts/am.mjs" patch page.html --panel "Panel title" <<'AM_EOF'
 ## A Panel title
 New content
 AM_EOF
@@ -213,4 +199,4 @@ Every sentence on the page gives the reader one fact they need. The idea comes f
 
 Use only when the user explicitly asks for a video ("make a video", "explain it as a video", "3b1b style", "explainer video"). Do not produce a video unasked in always-on mode either.
 
-Before you write a video draft, read `${CLAUDE_SKILL_DIR}/references/video.md` and follow it.
+Before you write a video draft, read [references/video.md](references/video.md) and follow it.

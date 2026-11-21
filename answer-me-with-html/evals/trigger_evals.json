@@ -1,0 +1,82 @@
+[
+  {
+    "query": "把刚才分析出来的这套微服务调用链路画成图解页面保存下来，方便我发给团队看",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把这份 Redis 缓存穿透、击穿、雪崩的排查结论做成可视化 HTML 文档",
+    "should_trigger": true
+  },
+  {
+    "query": "导出网页笔记：用带目录大纲的网页总结一下这个项目目录架构和核心启动流程",
+    "should_trigger": true
+  },
+  {
+    "query": "把下面三个部署方案的优缺点对比生成 HTML，存到输出目录里",
+    "should_trigger": true
+  },
+  {
+    "query": "做成离线 HTML：解释清楚 HTTP/2 多路复用与队头阻塞的原理",
+    "should_trigger": true
+  },
+  {
+    "query": "Explain how this state machine works visually as a 3b1b-style explainer video (做个视频), no voiceover needed.",
+    "should_trigger": true
+  },
+  {
+    "query": "把这段代码审查意见生成带 diff 和决策选项的图解网页，我点选完再把回复贴给你",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把刚看懂的这篇技术方案做成单文件可分享的 HTML 图解看板",
+    "should_trigger": true
+  },
+  {
+    "query": "/answer-me-with-html config open off",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我清理一下之前生成的旧 HTML 页面，先看看占了多少空间",
+    "should_trigger": true
+  },
+  {
+    "query": "对比一下 FastAPI 和 Flask 在异步生态、ORM 和部署方式上的优缺点，直接在这里用表格回答我",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我讲讲 TCP 三次握手和四次挥手的原理，文字解释清楚就行",
+    "should_trigger": false
+  },
+  {
+    "query": "在我的前端项目 src/pages/login.html 里写一个响应式登录页面，包含表单校验和 Tailwind 样式",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我把这个教学视频 https://www.youtube.com/watch?v=abc123 总结成 HTML 文档",
+    "should_trigger": false
+  },
+  {
+    "query": "把这张拍下来的小学数学几何错题照片还原成可打印的 A4 错题卷 HTML",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我检查当前仓库里 Python 代码有哪些潜在的并发安全问题，列出问题点",
+    "should_trigger": false
+  },
+  {
+    "query": "把这个本地视频 ~/Downloads/lecture.mp4 的第 12 分钟讲了什么看一遍告诉我",
+    "should_trigger": false
+  },
+  {
+    "query": "用 FastAPI 写一个 /api/v1/health 和 /api/v1/ready 健康检查接口",
+    "should_trigger": false
+  },
+  {
+    "query": "把这条命令的报错日志贴出来分析一下为什么 Alembic 迁移失败了",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我扫描一下当前项目里的几个 Skill 有没有安全风险",
+    "should_trigger": false
+  }
+]
