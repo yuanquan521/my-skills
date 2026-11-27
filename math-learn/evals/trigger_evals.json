@@ -1,0 +1,82 @@
+[
+  {
+    "query": "孩子四年级数学应用题做错了，帮我讲一下这道题怎么给他讲明白，再出几道举一反三的练习",
+    "should_trigger": true
+  },
+  {
+    "query": "拍了一张小升初奥数行程题的照片，帮我看看考察什么知识点、最容易踩什么坑，给我两种解法",
+    "should_trigger": true
+  },
+  {
+    "query": "辅导作业头疼死了，这道五年级分数应用题别用方程，用孩子能听懂的画图或份数法讲讲",
+    "should_trigger": true
+  },
+  {
+    "query": "别直接给答案，我想陪二年级娃一步步想明白这道和差倍题，你出提示引导他",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把这道小学六年级圆和扇形阴影面积的错题解析做成离线 HTML 学习单存下来",
+    "should_trigger": true
+  },
+  {
+    "query": "整理错题解析：孩子今天期中卷错的这 3 道盈亏和牛吃草题，帮我分析下错因并给家长提问话术",
+    "should_trigger": true
+  },
+  {
+    "query": "这道鸡兔同笼倒扣分奥数题孩子算成 5-2=3 了，帮我讲透为什么错了，并导出电子错题卡 HTML 到下载目录",
+    "should_trigger": true
+  },
+  {
+    "query": "小学数学解析：甲乙两人合买水果找补钱这道题除不尽怎么教孩子不四舍五入？",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我看看这道小升初数论真题（同时被 3、4、5 整除余 2）怎么做，顺便总结一下这类题的万能解题模板",
+    "should_trigger": true
+  },
+  {
+    "query": "给孩子讲题：火车长 200 米完全通过 800 米大桥用了 50 秒，怎么画图让孩子记住要加车长？",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我把这张拍下来的小学数学试卷照片去掉手写笔迹和红叉，100% 还原成空白原题卷和纯净黑白几何图",
+    "should_trigger": false
+  },
+  {
+    "query": "把这张孩子错题照片做一下错题翻新，只提取空白原题导出可打印 A4 错题卷，不要写解析",
+    "should_trigger": false
+  },
+  {
+    "query": "把 FastAPI 和 Flask 的架构差异做成一份带目录大纲的离线 HTML 可视化网页保存下来",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我用拉格朗日中值定理和泰勒展开证明下面这道高等数学微积分极限题",
+    "should_trigger": false
+  },
+  {
+    "query": "求解这个 4×4 实对称矩阵的特征值与正交对角化过程，写出线性代数推导步骤",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我用 Python 写一道 LeetCode 动态规划算法题（背包问题）的题解和复杂度分析",
+    "should_trigger": false
+  },
+  {
+    "query": "把这个 B 站奥数教学视频链接 https://www.bilibili.com/video/BV1xx411c7mD 看一遍总结成 HTML 笔记",
+    "should_trigger": false
+  },
+  {
+    "query": "用 FastAPI + SQLAlchemy 写一个管理学生错题本的 CRUD 后端接口",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我写一段物理力学受力分析，计算斜面摩擦因数和加速度",
+    "should_trigger": false
+  },
+  {
+    "query": "检查一下我们仓库里 math-learn 这个 skill 目录有没有安全风险或提示词注入",
+    "should_trigger": false
+  }
+]

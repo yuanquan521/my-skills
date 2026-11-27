@@ -13,3 +13,5 @@
 4. `answer-me-with-html/` — 按需将回答、流程、架构对比或视频总结渲染为单页可视化 HTML 文档或讲解视频（克制触发，单文件夹统一输出至 `AI-Outputs/`，保留中文文件名并关闭自动更新）。
 
 5. `watch/` — 解析在线视频 URL 或本地视频（字幕/语音转写 + 关键帧提取/Gemini 识片），并联动 `answer-me-with-html` 生成 HTML 总结文档。
+
+6. `math-learn/` — 小学及小升初数学深度解析、错因诊断、举一反三变式训练、互动陪学与离线 HTML 学习单生成（联动 `answer-me-with-html`）。
