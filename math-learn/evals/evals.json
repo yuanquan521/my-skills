@@ -4,23 +4,23 @@
     {
       "id": 1,
       "prompt": "孩子五年级做错了这道应用题，帮我讲一下并整理错题解析和举一反三：\n原题：甲、乙、丙三人合买一箱橘子，付了同样多的钱。分橘子时，甲分得 11 千克，乙分得 9 千克，丙分得 5 千克。算账时，丙一共收到甲和乙退给他的 10 元钱。请问每千克橘子多少元？甲应该付给丙多少元？\n孩子写的错解：11 - 5 = 6（千克），10 ÷ 6 = 1.67（元/千克）。",
-      "expected_output": "按单题完整解析模式输出：首行明确给出最终答案（每千克 3 元，甲付给丙 8 元）；全程使用纯文本易读数学符号，零 LaTeX 源码；用双重解法（推荐扩倍化份数法或精确分数法，不中途四舍五入）加反向验算，并用脚本核对本题与自编变式题数值；精准诊断孩子错解（拿丙的 5 千克当应得基准且忽略了乙多拿的部分，同时中途四舍五入）；给出万能解题模板、家长启发问句与 4 道经精确验算的阶梯变式题（变式 4 含题干 + 升级思路点拨 + 答案）。",
+      "expected_output": "按单题完整解析模式完成 6 步解析与脚本精确验算（每千克 3 元，甲付给丙 8 元），默认读取 references/html-export.md 生成单文件离线 HTML 保存至 /Users/chengwei/Downloads/小学数学-<主题>解析.html；HTML 内容包含纯文本易读数学符号（零 LaTeX）、精准孩子错因诊断、两种适龄解法（推荐扩倍化份数法，不中途四舍五入）、反向验算表、头号陷阱警示、万能解题模板、家长启发问句与 4 道经精确验算的阶梯变式题（变式 4 含题干 + 升级思路点拨 + 答案）；对话中简洁回复最终答案、核心错因结论与可点击 file:// 链接。",
       "files": [],
       "expectations": [
-        "States the exact verified answers first (每千克 3 元，甲应付给丙 8 元) without intermediate rounding errors.",
-        "Uses only readable plain-text math symbols (×, ÷, =, 25/3 or 8又1/3) and contains zero LaTeX commands ($...$, \\times, \\div, \\frac).",
+        "By default generates a single self-contained offline HTML file saved in /Users/chengwei/Downloads/ (using answer-me-with-html scripts/am.mjs with -o or fallback self-contained HTML) even though the user did not explicitly ask for HTML.",
+        "Computes exact verified answers (每千克 3 元，甲应付给丙 8 元) without intermediate rounding and uses only readable plain-text math symbols with zero LaTeX syntax.",
         "Explicitly diagnoses the student's written mistake (treating 丙's 5 kg as the fair share instead of the average 25/3 kg, ignoring 乙's extra share, and rounding 10 ÷ 6).",
-        "Provides two distinct grade-appropriate methods (intuitive fraction/scaling method without forced algebra + advanced/ratio method), reverse verification, reusable template, parent coaching questions, and 4 verified stepped variations whose arithmetic is exact."
+        "Includes two grade-appropriate methods, reverse verification, reusable template, parent coaching questions, and 4 verified stepped variations inside the HTML, and replies concisely in chat with core conclusion + clickable file:// link."
       ]
     },
     {
       "id": 2,
       "prompt": "别直接给答案！我想陪三年级娃一步步想明白这道题，你来当老师引导我们：\n笼子里有鸡和兔共 12 只，数一数一共有 34 条腿。鸡和兔各有多少只？",
-      "expected_output": "严格进入互动陪学模式（模式 2）：内部完成验算（鸡 7 只、兔 5 只），但回复中严禁剧透答案 7 和 5，不输出完整 6 步解析模板，也不使用方程；仅给出简短鼓励 + 1 条适合三年级的题眼提示（如假设全都是鸡会怎样）+ 1 个孩子能马上回答的小问题，等待下一步回答。",
+      "expected_output": "严格进入互动陪学模式（模式 3）：内部完成验算（鸡 7 只、兔 5 只），但问答过程中严禁剧透答案 7 和 5、不输出完整 6 步模板、也不提前生成含答案的 HTML 文件，也不使用方程；仅给出简短鼓励 + 1 条适合三年级的题眼提示（如假设全都是鸡会怎样）+ 1 个孩子能马上回答的小问题，等待下一步回答。",
       "files": [],
       "expectations": [
         "Enters interactive tutoring mode and strictly withholds the final answers (does not reveal 7 chickens or 5 rabbits).",
-        "Does not dump the full 6-step solution template or 4 variation problems prematurely.",
+        "Does not generate an HTML solution file or dump the full 6-step template prematurely during interactive Q&A.",
         "Uses 3rd-grade intuitive framing (e.g. assuming all animals are chickens / drawing legs) without introducing algebraic equations.",
         "Gives only one focused hint and one concrete guiding question to wait for the child's response."
       ]
@@ -28,25 +28,37 @@
     {
       "id": 3,
       "prompt": "这是孩子今天作业里错的 3 道六年级题，一起帮我看看怎么讲：\n1. 一件衣服先涨价 10%，再降价 10%，现价是原价的百分之几？\n2. 从 1 楼爬到 6 楼用了 100 秒，照这样算，从 1 楼爬到 9 楼需要多少秒？\n3. 简便计算：125 × 32 × 25",
-      "expected_output": "进入多题批量解析模式（模式 3）：先给出 3 道题的题号与答案速查表（99%、160 秒、100000）；再逐题给出精炼主解、单位/验算与头号易错点（不会为每道题各自铺开 4 道变式导致输出冗长）；文末集中提炼核心思维与 2–4 道综合巩固变式，全文零 LaTeX 源码。",
+      "expected_output": "进入多题批量解析模式（模式 2）：合并生成单个离线 HTML 保存至 /Users/chengwei/Downloads/小学数学-错题解析汇总-<日期或主题>.html，内含 3 题答案速查表（99%、160 秒、100000）、逐题精炼主解与头号易错点（不为每道题各自铺开 4 变式）、文末集中提炼核心思维与 2–4 道综合巩固变式，零 LaTeX 源码；对话中简洁给出 3 题答案速查与可点击 file:// 链接。",
       "files": [],
       "expectations": [
-        "Starts with a concise answer summary covering all 3 verified answers (99%, 160 秒, 100000).",
-        "Provides concise, accurate explanations and key pitfalls for each problem (base change on 10%, 5 intervals not 6 for 1-to-6 floors, splitting 32 = 8 × 4) without bloating into 12 separate variation questions.",
-        "Consolidates a brief takeaway and 2–4 targeted practice variations at the end rather than repeating the full single-question template 3 times.",
-        "Contains zero LaTeX commands and uses readable plain-text math notation throughout."
+        "Bundles all 3 problems into a single self-contained offline HTML file saved under /Users/chengwei/Downloads/ by default.",
+        "Includes a concise answer summary covering all 3 verified answers (99%, 160 秒, 100000) and concise per-problem explanations/pitfalls without bloating into 12 separate variation questions.",
+        "Consolidates a brief takeaway and 2–4 targeted practice variations at the end with zero LaTeX commands.",
+        "Replies concisely in chat with the answer summary and clickable file:// link."
       ]
     },
     {
       "id": 4,
-      "prompt": "把下面这道小升初几何题做成离线 HTML 学习笔记保存下来，方便孩子复习：\n一个长方形长 12 厘米、宽 8 厘米，连接长方形一条长边的中点和相对的两个顶点，组成一个三角形。求这个三角形的面积和剩下阴影部分的面积。",
-      "expected_output": "先完成精准求解与验算（长方形面积 96 平方厘米，三角形面积 48 平方厘米，剩下阴影面积 48 平方厘米，涉及一半模型）；读取 references/html-export.md 并定位 answer-me-with-html/scripts/am.mjs 渲染单文件 HTML；因用户未指定保存目录，不传 -o，在 frontmatter 使用 template: doc、theme: paper、style: off、lang: zh 与中文 file 字段直接输出至 AI-Outputs/；草稿包含简洁内联 svg 几何示意图（非硬套柱状图）、两种解法、验算表、陷阱警示、通用模板与 4 阶梯变式，零 LaTeX 源码；最后简洁回复结论与 file:// 链接。",
+      "prompt": "讲一下这道小升初几何题：\n一个长方形长 12 厘米、宽 8 厘米，连接长方形一条长边的中点和相对的两个顶点，组成一个三角形。求这个三角形的面积和剩下阴影部分的面积。",
+      "expected_output": "先完成精准求解与验算（长方形面积 96 平方厘米，三角形面积 48 平方厘米，剩下阴影面积 48 平方厘米，涉及一半模型）；默认读取 references/html-export.md 并通过 answer-me-with-html/scripts/am.mjs 搭配 -o 输出单文件 HTML 至 /Users/chengwei/Downloads/小学数学-长方形一半模型面积解析.html（使用 template: doc、theme: paper、style: off、lang: zh）；内含简洁内联 svg 几何示意图（非硬套柱状图）、两种解法、验算表、陷阱警示、通用模板与 4 阶梯变式，零 LaTeX 源码；对话简洁回复答案与 file:// 链接。",
       "files": [],
       "expectations": [
         "Verifies the math accurately (rectangle 96 cm², triangle 48 cm², remaining shaded area 48 cm² via 一半模型).",
-        "Reads references/html-export.md and invokes answer-me-with-html scripts/am.mjs without -o (writing to default AI-Outputs/) using template: doc, theme: paper, style: off, and a Chinese file: stem.",
-        "Includes a clean inline SVG diagram showing the rectangle, midpoint, and triangle rather than forcing an inappropriate bar/pie chart, with zero LaTeX syntax in the draft.",
+        "Reads references/html-export.md and outputs a single-file offline HTML to /Users/chengwei/Downloads/ via -o (using template: doc, theme: paper, style: off when calling am.mjs).",
+        "Includes a clean inline SVG diagram showing the rectangle, midpoint, and triangle rather than forcing an inappropriate bar/pie chart, with zero LaTeX syntax.",
         "Replies concisely with the core result and a clickable file:// link without pasting raw HTML into chat."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "不用生成 HTML，直接发纯文字给我，方便复制到微信群里给家长看：\n一列长 200 米的火车以每秒 20 米的速度完全通过一座长 800 米的大桥，需要多少秒？",
+      "expected_output": "识别用户显式要求纯文字输出（模式 4）：跳过 HTML 文件生成，直接在对话中按第 4 节标准 Markdown 结构输出完整解析（答案 50 秒，含两种思路/反向验算、火车过桥漏加车长陷阱、万能模板、家长启发问句与 4 道经精确验算的阶梯变式），全程纯文本数学符号、零 LaTeX 源码。",
+      "files": [],
+      "expectations": [
+        "Honors the explicit plain-text request and skips generating any HTML file.",
+        "Outputs the full structured explanation directly in chat following Section 4 with the exact verified answer (50 秒).",
+        "Highlights the classic pitfall of forgetting train length (total distance = 800 + 200 = 1000 m, not 800 m) and includes 4 verified variations.",
+        "Uses only readable plain-text math symbols with zero LaTeX commands so it copies cleanly to WeChat."
       ]
     }
   ]

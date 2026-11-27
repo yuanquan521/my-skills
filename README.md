@@ -14,4 +14,4 @@
 
 5. `watch/` — 解析在线视频 URL 或本地视频（字幕/语音转写 + 关键帧提取/Gemini 识片），并联动 `answer-me-with-html` 生成 HTML 总结文档。
 
-6. `math-learn/` — 小学及小升初数学深度解析、错因诊断、举一反三变式训练、互动陪学与离线 HTML 学习单生成（联动 `answer-me-with-html`）。
+6. `math-learn/` — 小学及小升初数学深度解析、错因诊断、举一反三变式训练与互动陪学，默认生成单文件离线 HTML 学习单并保存至 `/Users/chengwei/Downloads/`（联动 `answer-me-with-html`，亦支持纯文字输出）。
