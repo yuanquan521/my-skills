@@ -4,12 +4,12 @@
     {
       "id": 1,
       "prompt": "帮我看一下这个本地 Python 编程教学视频 ~/Downloads/fastapi-demo.mp4，总结核心步骤和代码要点成 HTML 文档。",
-      "expected_output": "先运行 setup.py --json / watch.py（针对代码演示教学建议 --resolution 1024）提取字幕与关键帧，读取关键帧图像与字幕内容后，编写 template: doc 且 style: off 的深度中文精读草稿（保留完整操作步骤、真实代码/命令、踩坑细节、原话引述、关键帧截图与 MM:SS 时间戳），在删除临时 Work dir 之前先通过 answer-me-with-html 的 scripts/am.mjs render - 将 HTML 落盘到 /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/，渲染成功后再清理 Work dir 并返回 file:// 链接。",
+      "expected_output": "先运行 setup.py --json / watch.py（针对代码演示教学建议 --resolution 1024）提取字幕与关键帧，读取证据后，按 answer-me-with-html 第 6 节编写 template: doc 且 style: off 的中文草稿。覆盖核心步骤、必要代码/命令与关键陷阱，带 MM:SS 时间戳；仅在有助于理解或验证时保留引述与截图。在删除临时 Work dir 之前先通过 scripts/am.mjs render - 将 HTML 落盘到 /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/，渲染成功后再清理 Work dir 并返回 file:// 链接。",
       "files": [],
       "expectations": [
         "Runs watch.py (with --resolution 1024 or high-res cue frames for code/slides when using local engine) before summarizing.",
-        "Invokes answer-me-with-html (scripts/am.mjs render -) with template: doc and style: off to generate a thorough HTML study guide into /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/.",
-        "Preserves full reasoning, concrete code/commands/examples, timestamps, and chapter coverage rather than compressing into a thin bullet outline.",
+        "Reads answer-me-with-html section 6 and invokes scripts/am.mjs render - with template: doc and style: off to generate the HTML document into /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/.",
+        "Covers substantive topics and preserves the reasoning, code/commands, examples and timestamps needed to understand or reproduce the core steps, with coherent paragraphs and selective depth.",
         "Renders the HTML document BEFORE deleting the disposable Work dir so embedded keyframe images exist on disk during am render.",
         "Cleans up only the disposable Work dir after rendering succeeds (never deletes the user's source video)."
       ]
@@ -22,7 +22,8 @@
       "expectations": [
         "Recognizes the 65-minute length and avoids relying solely on sparse full-video frame caps or one-shot short summaries; maps all chapters from 00:00 to end and uses focused --start/--end passes.",
         "Combines all sections and timestamps into one consolidated template: doc + style: off HTML page (exceeding 8 panels when needed rather than dropping later chapters) via answer-me-with-html.",
-        "Cites MM:SS timestamps for sections, preserves concrete formulas/examples/quotes, and outputs directly to /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/."
+        "Cites MM:SS timestamps for sections, preserves the formulas, examples and quotes needed for the requested deep study, and outputs directly to /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/.",
+        "Covers the entire course while grouping related material, using paragraphs and meaningful subheadings, and avoiding a minimum chapter count or repeated closing summary."
       ]
     },
     {
@@ -34,6 +35,19 @@
         "Does not fabricate visual or spoken content when media/captions fail or are partial.",
         "Adds a callout warn near the top of the HTML document clearly stating unavailable evidence and reasons.",
         "Still uses answer-me-with-html (scripts/am.mjs render -) to produce the HTML summary unless the user asked for plain text only."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "帮我把本地视频 ~/Downloads/product-demo.mp4 总结成简短 HTML 文章，按主题分层分段。看完整段视频，保留各部分关键结论，难懂的机制才展开，不要逐操作复述，也不要结尾再重复一遍。",
+      "expected_output": "完整采集并核对全片证据，按实质主题组织 ## 章节，用分段正文呈现结论和必要依据。将重复演示归并，难点按需展开，时间线仅作为索引。渲染前执行 answer-me-with-html 第 6 节检查；不用章节数量、视频时长或 style: off 作为扩写理由。",
+      "files": [],
+      "expectations": [
+        "Reviews the full video, including later segments, and accounts for every substantive topic without treating brevity as permission to omit unseen sections.",
+        "Groups repeated demonstrations into distinct topics and uses coherent paragraphs and ordered heading levels instead of a panel per click or a bullet per sentence.",
+        "Expands only mechanisms or steps needed for understanding and keeps routine demonstrations brief without invented examples or a chapter quota.",
+        "Uses a compact full-duration timeline index; chapter prose provides the explanation without duplicating timeline descriptions or header metadata.",
+        "Completes the required editing pass and ends without a recap of the opening; a final checklist appears only if it adds new actions."
       ]
     }
   ]

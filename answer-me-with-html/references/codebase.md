@@ -26,13 +26,14 @@ On a repository too large to read in this context: once the modules in scope are
 ## Draft
 
 Render from the repository root, so `src=` and the spans resolve against it.
+Apply SKILL.md section 6's writing rules and editing pass. Select the blocks below that answer the question, giving each fact one main home.
 
 - **Frontmatter:** `commit:` set to `git rev-parse --short HEAD`, with `+dirty` appended when `git status --porcelain` prints anything. The page header shows it, so the reader knows which code the page describes.
-- **Lead:** the answer in two or three sentences.
+- **Lead:** the core answer as specified in section 6.
 - **Modules:** a `tree`, one line per module, `folder/ | job`.
 - **Main path:** a `flow` for how parts connect, or a `sequence` for calls between parts over time. Use the same names as the module tree.
 - **Key code:** code blocks with `src=` and `lines=` for the few spots the main path turns on.
-- **Module table:** module, its files, its job, what it depends on.
+- **Module table:** module, its files, its job, what it depends on. Use this instead of the module tree when the table communicates the same inventory; keep both only when they convey distinct information.
 - **Data model,** when the question is about data: an `er` or `class` diagram.
 
 Order the panels by the question: "how does X work" leads with the main path; "how is this organized" leads with the modules.

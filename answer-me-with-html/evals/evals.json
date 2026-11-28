@@ -42,9 +42,35 @@
       "expected_output": "使用 template: doc、style: off，通过默认渲染器生成页面。正文按章节展开，时间线用作章节索引，保留可读字号、宽屏自适应宽度和手机换行。",
       "files": [],
       "expectations": [
-        "Uses template: doc and style: off for sustained reading, with full chapter explanations outside the timeline.",
+        "Uses template: doc and style: off for sustained reading; explains the requested chapters in paragraphs outside a compact timeline index, with depth chosen for each topic.",
         "Uses built-in timeline and table components and keeps the renderer's default readable sizing.",
         "Renderer regression passes: node answer-me-with-html/evals/check-readability.mjs checks computed font sizes, line height, document width and mobile overflow in light and dark modes."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "把下面这些重复、混乱的材料整理成一篇简短 HTML 文章，面向活动参加者，说明怎么选报名方式即可：报名可以网页填写或现场登记。两种方式都要填写姓名和人数。网页填写不必排队，但需要网络。没有网络可以现场登记，但可能排队。网页报名需要网络，不用排队。现场也能报名，现场可能要排队。两种方式都需要姓名和人数。",
+      "expected_output": "先简短说明选择依据，用有明确主题的 ## 章节和分段正文组织共同要求与方式对比；仅在需要区分子主题时使用 ###。合并重复信息，每项事实选择正文或表格中的一处主要呈现，不增加活动背景、虚构条件或重复总结。",
+      "files": [],
+      "expectations": [
+        "Uses the frontmatter title as the page title and meaningful ordered heading levels; does not force extra panels or subheadings to reach a count.",
+        "Uses coherent paragraphs separated by blank lines, with one point per paragraph; does not convert all prose into sentence-by-sentence bullets.",
+        "Preserves the shared name/headcount requirement and both methods' network/queue tradeoffs while consolidating repeated source statements.",
+        "Gives each fact one main home in prose or a comparison table; subsequent prose adds a useful implication instead of repeating table cells.",
+        "Keeps the article brief without unrelated history, extra examples, or a closing section that restates the opening.",
+        "Completes section 6's editing pass before rendering; style: off, if used, does not waive the article writing rules."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "请把下面说明做成 HTML 教程，讲清失败后为什么只重试对应阶段，并用一个保存失败的例子展示恢复步骤：作业依次读取数据、处理数据、保存结果。只有保存成功才算完成。处理失败可以从处理阶段重试；保存失败只重试保存，避免重复处理。",
+      "expected_output": "按阶段和失败恢复组织 ## 章节，在确有子主题时使用 ###；用短段落解释完成条件与重试边界，展开理解恢复过程所必需的因果链，并给出一个保存失败的恢复示例。避免把教程压成只有标题的提纲，也不扩写无关系统设计。",
+      "files": [],
+      "expectations": [
+        "Uses ordered heading levels and connected paragraphs to distinguish the normal stages, completion condition and recovery behavior.",
+        "Expands the necessary why/how reasoning and provides actionable recovery steps rather than only naming stages.",
+        "Preserves the distinction between processing failure and saving failure and uses only one representative saving-failure example.",
+        "Keeps added detail tied to understanding or performing recovery; does not invent infrastructure, add a chapter quota, or repeat the same recovery explanation across prose, diagram and summary."
       ]
     }
   ]
