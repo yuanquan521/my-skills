@@ -21,7 +21,8 @@
       "expectations": [
         "Uses frontmatter template: doc with 3 or more ## panels so the outline rail is generated.",
         "Uses built-in sequence diagram syntax and Markdown table rather than raw SVG/HTML blocks.",
-        "Outputs directly to /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/ with lang: zh."
+        "Outputs directly to /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/ with lang: zh.",
+        "Uses the renderer's readable typography and responsive document width; does not override them with tiny raw HTML/CSS."
       ]
     },
     {
@@ -33,6 +34,17 @@
         "Reads references/video.md before drafting the video script.",
         "Invokes scripts/am.mjs video - --voice off rather than render.",
         "Outputs the player HTML directly into /Users/chengwei/Library/CloudStorage/飞牛同步-飞牛同步/AI-Outputs/ (single flat folder, no videos/ subfolder)."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "生成一份适合长时间阅读的视频网页笔记，包含完整章节解释、章节时间线和对比表格。字体要清楚，宽屏不要两侧大量留白，手机也能阅读。",
+      "expected_output": "使用 template: doc、style: off，通过默认渲染器生成页面。正文按章节展开，时间线用作章节索引，保留可读字号、宽屏自适应宽度和手机换行。",
+      "files": [],
+      "expectations": [
+        "Uses template: doc and style: off for sustained reading, with full chapter explanations outside the timeline.",
+        "Uses built-in timeline and table components and keeps the renderer's default readable sizing.",
+        "Renderer regression passes: node answer-me-with-html/evals/check-readability.mjs checks computed font sizes, line height, document width and mobile overflow in light and dark modes."
       ]
     }
   ]
